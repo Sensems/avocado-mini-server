@@ -1,0 +1,233 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id          Int      @id @default(autoincrement())
+  username    String   @unique @db.VarChar(50)
+  email       String   @unique @db.VarChar(100)
+  password    String   @db.VarChar(255)
+  nickname    String?  @db.VarChar(50)
+  avatar      String?  @db.VarChar(255)
+  phone       String?  @db.VarChar(20)
+  status      UserStatus @default(ACTIVE)
+  role        UserRole @default(USER)
+  permissions Json?
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  miniprograms Miniprogram[]
+  buildTasks   BuildTask[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// 小程序表
+model Miniprogram {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  appId         String   @unique @db.VarChar(50)
+  appSecret     String?  @db.VarChar(255)
+  privateKey    String   @db.Text
+  gitUrl        String   @db.VarChar(500)
+  gitBranch     String   @default("master") @db.VarChar(100)
+  gitUsername   String?  @db.VarChar(100)
+  gitPassword   String?  @db.VarChar(255)
+  gitToken      String?  @db.VarChar(255)
+  buildCommand  String?  @db.VarChar(500)
+  outputDir     String?  @db.VarChar(255)
+  projectType   ProjectType @default(NATIVE)
+  autoVersion   Boolean  @default(false)
+  version       String   @default("1.0.0") @db.VarChar(20)
+  description   String?  @db.Text
+  status        MiniprogramStatus @default(ACTIVE)
+  config        Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        Int
+
+  // 关联关系
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buildTasks   BuildTask[]
+  webhooks     Webhook[]
+
+  @@map("miniprograms")
+}
+
+// 构建任务表
+model BuildTask {
+  id              String      @id @default(uuid()) @db.VarChar(36)
+  appId           Int
+  type            BuildType
+  status          TaskStatus  @default(PENDING)
+  priority        Int         @default(2)
+  retryCount      Int         @default(0)
+  progress        Int         @default(0)
+  
+  // Git信息
+  branch          String      @db.VarChar(100)
+  commitId        String?     @db.VarChar(40)
+  commitMessage   String?     @db.Text
+  commitAuthor    String?     @db.VarChar(100)
+  
+  // 构建信息
+  version         String      @db.VarChar(20)
+  description     String?     @db.Text
+  buildLog        String?     @db.LongText
+  errorMessage    String?     @db.Text
+  
+  // 时间信息
+  createTime      DateTime    @default(now())
+  startTime       DateTime?
+  endTime         DateTime?
+  duration        Int?        // 耗时(秒)
+  
+  // 操作信息
+  operator        String      @db.VarChar(100)
+  triggerType     TriggerType @default(MANUAL)
+  
+  // 结果信息
+  qrcodeUrl       String?     @db.VarChar(500)
+  packageSize     Json?       // 包大小信息
+  
+  userId          Int
+
+  // 关联关系
+  miniprogram     Miniprogram @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user            User @relation(fields: [userId], references: [id])
+  notifications   Notification[]
+
+  @@map("build_tasks")
+}
+
+// 通知表
+model Notification {
+  id          Int      @id @default(autoincrement())
+  type        NotificationType
+  title       String   @db.VarChar(200)
+  content     String   @db.Text
+  recipient   String   @db.VarChar(100)
+  status      NotificationStatus @default(PENDING)
+  retryCount  Int      @default(0)
+  config      Json?    // 通知配置(钉钉webhook等)
+  result      Json?    // 发送结果
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  taskId      String?  @db.VarChar(36)
+  userId      Int
+
+  // 关联关系
+  buildTask   BuildTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  user        User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// Webhook表
+model Webhook {
+  id          Int      @id @default(autoincrement())
+  url         String   @db.VarChar(500)
+  secret      String?  @db.VarChar(255)
+  events      Json     // 监听的事件类型
+  status      WebhookStatus @default(ACTIVE)
+  retryCount  Int      @default(0)
+  lastTrigger DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  appId       Int
+
+  // 关联关系
+  miniprogram Miniprogram @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@map("webhooks")
+}
+
+// 系统配置表
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique @db.VarChar(100)
+  value       Json
+  description String?  @db.VarChar(255)
+  category    String   @db.VarChar(50)
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_configs")
+}
+
+// 枚举定义
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
+enum ProjectType {
+  NATIVE    // 原生小程序
+  UNI_APP   // uni-app
+  TARO      // Taro
+  WEPY      // WePY
+}
+
+enum MiniprogramStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum BuildType {
+  UPLOAD    // 上传
+  PREVIEW   // 预览
+}
+
+enum TaskStatus {
+  PENDING   // 等待中
+  RUNNING   // 运行中
+  SUCCESS   // 成功
+  FAILED    // 失败
+  CANCELLED // 已取消
+}
+
+enum TriggerType {
+  MANUAL    // 手动触发
+  WEBHOOK   // Webhook触发
+  SCHEDULED // 定时触发
+}
+
+enum NotificationType {
+  EMAIL
+  DINGTALK
+  WECHAT
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING   // 等待发送
+  SENT      // 已发送
+  FAILED    // 发送失败
+}
+
+enum WebhookStatus {
+  ACTIVE
+  INACTIVE
+}
