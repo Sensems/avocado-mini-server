@@ -1,6 +1,5 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { NotificationType } from '@prisma/client';
 import { NotificationsService } from './notifications.service';
 import { DingtalkService } from './services/dingtalk.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,6 +7,8 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/auth.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { User } from '@prisma/client';
+import { SendNotificationDto } from './dto/send-notification.dto';
+import { TestDingtalkDto } from './dto/test-dingtalk.dto';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -26,16 +27,10 @@ export class NotificationsController {
   @ApiResponse({ status: 400, description: '请求参数错误' })
   sendNotification(
     @CurrentUser() user: User,
-    @Body() body: {
-      type: NotificationType;
-      title: string;
-      content: string;
-      recipient: string;
-      config?: Record<string, any>;
-    },
+    @Body() sendNotificationDto: SendNotificationDto,
   ) {
     return this.notificationsService.sendNotification({
-      ...body,
+      ...sendNotificationDto,
       userId: user.id,
     });
   }
@@ -46,9 +41,12 @@ export class NotificationsController {
   @ApiResponse({ status: 200, description: '测试成功' })
   @ApiResponse({ status: 400, description: '测试失败' })
   async testDingtalkWebhook(
-    @Body() body: { webhook: string; secret?: string },
+    @Body() testDingtalkDto: TestDingtalkDto,
   ) {
-    const success = await this.dingtalkService.testWebhook(body.webhook, body.secret);
+    const success = await this.dingtalkService.testWebhook(
+      testDingtalkDto.webhook, 
+      testDingtalkDto.secret
+    );
     return { success, message: success ? '测试成功' : '测试失败' };
   }
 

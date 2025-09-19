@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Public } from './common/decorators/auth.decorator';
 import { AppService } from './app.service';
 
 @ApiTags('system')
@@ -15,6 +16,7 @@ export class AppController {
   }
 
   @Get('health')
+  @Public()
   @ApiOperation({ summary: '健康检查' })
   @ApiResponse({ status: 200, description: '服务健康状态' })
   healthCheck(): Record<string, any> {

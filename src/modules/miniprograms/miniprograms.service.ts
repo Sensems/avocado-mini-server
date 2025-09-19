@@ -1,31 +1,74 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { Miniprogram, MiniprogramStatus, Prisma } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import { Miniprogram, MiniprogramStatus, Prisma, MiniprogramConfig, GitCredential } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMiniprogramDto } from './dto/create-miniprogram.dto';
 import { UpdateMiniprogramDto } from './dto/update-miniprogram.dto';
 import { PaginationDto, PaginationResult } from '../../common/dto/pagination.dto';
 
+type MiniprogramWithConfig = Miniprogram & { 
+  config?: MiniprogramConfig | null;
+  gitCredential?: any;
+  notificationConfigs?: any[];
+};
+
 @Injectable()
 export class MiniprogramsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * 创建小程序
    */
   async create(userId: number, createMiniprogramDto: CreateMiniprogramDto): Promise<Miniprogram> {
+    const { config, gitCredentialId, notificationConfigIds, ...miniprogramData } = createMiniprogramDto;
+
     // 检查AppID是否已存在
     const existingMiniprogram = await this.prisma.miniprogram.findUnique({
-      where: { appId: createMiniprogramDto.appId },
+      where: { appId: miniprogramData.appId },
     });
 
     if (existingMiniprogram) {
       throw new ConflictException('该AppID已存在');
     }
 
+    // 验证Git认证凭据是否存在且属于当前用户
+    if (gitCredentialId) {
+      const gitCredential = await this.prisma.gitCredential.findFirst({
+        where: { id: gitCredentialId, userId },
+      });
+      if (!gitCredential) {
+        throw new BadRequestException('Git认证凭据不存在或无权限使用');
+      }
+    }
+
+    // 验证通知配置是否存在且属于当前用户
+    if (notificationConfigIds && notificationConfigIds.length > 0) {
+      const notificationConfigs = await this.prisma.notificationConfig.findMany({
+        where: { id: { in: notificationConfigIds }, userId },
+      });
+      if (notificationConfigs.length !== notificationConfigIds.length) {
+        throw new BadRequestException('部分通知配置不存在或无权限使用');
+      }
+    }
+
     return this.prisma.miniprogram.create({
       data: {
-        ...createMiniprogramDto,
-        userId,
+        ...miniprogramData,
+        user: {
+          connect: { id: userId },
+        },
+        config: config ? {
+          create: {
+            ...config,
+            gitCredentialId: gitCredentialId || undefined,
+            notificationConfigId: notificationConfigIds && notificationConfigIds.length > 0 ? notificationConfigIds[0] : undefined,
+          },
+        } : undefined,
       },
       include: {
         user: {
@@ -35,6 +78,25 @@ export class MiniprogramsService {
             nickname: true,
           },
         },
+        config: {
+          include: {
+            gitCredential: {
+              select: {
+                id: true,
+                name: true,
+                authType: true,
+              },
+            },
+            notificationConfig: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+              },
+            },
+          }
+        },
+        
       },
     });
   }
@@ -85,6 +147,25 @@ export class MiniprogramsService {
               nickname: true,
             },
           },
+          config: {
+            include: {
+              gitCredential: {
+                select: {
+                  id: true,
+                  name: true,
+                  authType: true,
+                },
+              },
+              notificationConfig: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                },
+              },
+            },
+          },
+          
           _count: {
             select: {
               buildTasks: true,
@@ -129,9 +210,32 @@ export class MiniprogramsService {
             nickname: true,
           },
         },
-        _count: {
+        config: {
+          include: {
+            gitCredential: {
           select: {
-            buildTasks: true,
+            id: true,
+            name: true,
+            authType: true,
+          },
+        },
+        notificationConfig: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+          }
+        },
+        buildTasks: {
+          orderBy: { createTime: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            version: true,
+            status: true,
+            createTime: true,
           },
         },
       },
@@ -158,6 +262,7 @@ export class MiniprogramsService {
             nickname: true,
           },
         },
+        config: true,
       },
     });
   }
@@ -170,22 +275,46 @@ export class MiniprogramsService {
     updateMiniprogramDto: UpdateMiniprogramDto,
     userId?: number,
   ): Promise<Miniprogram> {
+    const { config, gitCredentialId, notificationConfigIds, ...miniprogramData } = updateMiniprogramDto;
+
     // 检查小程序是否存在
     await this.findOne(id, userId);
 
     // 如果更新AppID，检查是否已存在
-    if (updateMiniprogramDto.appId) {
+    if (miniprogramData.appId) {
       const existingMiniprogram = await this.prisma.miniprogram.findFirst({
         where: {
           AND: [
             { id: { not: id } },
-            { appId: updateMiniprogramDto.appId },
+            { appId: miniprogramData.appId },
           ],
         },
       });
 
       if (existingMiniprogram) {
         throw new ConflictException('该AppID已存在');
+      }
+    }
+
+    // 验证Git认证凭据是否存在且属于当前用户
+    if (gitCredentialId !== undefined) {
+      if (gitCredentialId !== null) {
+        const gitCredential = await this.prisma.gitCredential.findFirst({
+          where: { id: gitCredentialId, userId },
+        });
+        if (!gitCredential) {
+          throw new BadRequestException('Git认证凭据不存在或无权限使用');
+        }
+      }
+    }
+
+    // 验证通知配置是否存在且属于当前用户
+    if (notificationConfigIds && notificationConfigIds.length > 0) {
+      const notificationConfigs = await this.prisma.notificationConfig.findMany({
+        where: { id: { in: notificationConfigIds }, userId },
+      });
+      if (notificationConfigs.length !== notificationConfigIds.length) {
+        throw new BadRequestException('部分通知配置不存在或无权限使用');
       }
     }
 
@@ -196,7 +325,24 @@ export class MiniprogramsService {
 
     return this.prisma.miniprogram.update({
       where: { id },
-      data: updateMiniprogramDto,
+      data: {
+        ...miniprogramData,
+        config: config ? {
+          upsert: {
+            create: {
+              ...config,
+              gitUrl: config.gitUrl || '', // 确保必填字段有值
+              gitCredentialId: gitCredentialId !== undefined ? gitCredentialId : undefined,
+              notificationConfigId: notificationConfigIds && notificationConfigIds.length > 0 ? notificationConfigIds[0] : undefined,
+            },
+            update: {
+              ...config,
+              gitCredentialId: gitCredentialId !== undefined ? gitCredentialId : undefined,
+              notificationConfigId: notificationConfigIds && notificationConfigIds.length > 0 ? notificationConfigIds[0] : undefined,
+            },
+          },
+        } : undefined,
+      },
       include: {
         user: {
           select: {
@@ -205,6 +351,25 @@ export class MiniprogramsService {
             nickname: true,
           },
         },
+        config: {
+          include: {
+            gitCredential: {
+              select: {
+                id: true,
+                name: true,
+                authType: true,
+              },
+            },
+            notificationConfig: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+              },
+            },
+          }
+        },
+        
       },
     });
   }
@@ -337,9 +502,9 @@ export class MiniprogramsService {
    * 自动递增版本号
    */
   async autoIncrementVersion(id: number, userId?: number): Promise<string> {
-    const miniprogram = await this.findOne(id, userId);
+    const miniprogram: MiniprogramWithConfig = await this.findOne(id, userId);
     
-    if (!miniprogram.autoVersion) {
+    if (!miniprogram.config?.autoVersion) {
       return miniprogram.version;
     }
 
@@ -354,5 +519,71 @@ export class MiniprogramsService {
     }
 
     return miniprogram.version;
+  }
+
+  /**
+   * 上传私钥文件
+   */
+  async uploadPrivateKey(id: number, file: Express.Multer.File, userId?: number): Promise<{ message: string; privateKeyPath: string }> {
+    // 验证小程序是否存在
+    const miniprogram = await this.findOne(id, userId);
+    
+    if (!file) {
+      throw new BadRequestException('请选择要上传的私钥文件');
+    }
+
+    try {
+      // 确保上传目录存在
+      const uploadDir = this.configService.get('upload.path', './uploads');
+      const privateKeyDir = path.join(uploadDir, 'private-keys');
+      await fs.ensureDir(privateKeyDir);
+
+      // 读取上传的文件内容
+      const fileContent = await fs.readFile(file.path, 'utf8');
+      
+      // 验证私钥文件格式（简单验证）
+      if (!fileContent.includes('-----BEGIN') || !fileContent.includes('-----END')) {
+        // 删除临时文件
+        await fs.remove(file.path);
+        throw new BadRequestException('私钥文件格式不正确');
+      }
+
+      // 生成新的文件名
+      const fileName = `miniprogram-${id}-private-key-${Date.now()}.key`;
+      const finalPath = path.join(privateKeyDir, fileName);
+      
+      // 移动文件到最终位置
+      await fs.move(file.path, finalPath);
+
+      // 更新数据库中的私钥路径
+      await this.prisma.miniprogram.update({
+        where: { id },
+        data: { 
+          privateKeyPath: finalPath,
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        message: '私钥文件上传成功',
+        privateKeyPath: finalPath,
+      };
+
+    } catch (error) {
+      // 清理临时文件
+      try {
+        if (file.path) {
+          await fs.remove(file.path);
+        }
+      } catch (cleanupError) {
+        console.error('Failed to cleanup temporary file:', cleanupError);
+      }
+      
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      
+      throw new BadRequestException('私钥文件上传失败: ' + error.message);
+    }
   }
 }

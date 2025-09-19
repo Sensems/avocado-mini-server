@@ -30,30 +30,67 @@ model User {
   miniprograms Miniprogram[]
   buildTasks   BuildTask[]
   notifications Notification[]
+  gitCredentials GitCredential[]
+  notificationConfigs NotificationConfig[]
 
   @@map("users")
 }
 
-// 小程序表
+// Git认证凭据表
+model GitCredential {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  authType    GitAuthType
+  username    String?  @db.VarChar(100)
+  password    String?  @db.VarChar(255)
+  token       String?  @db.VarChar(500)
+  sshKey      String?  @db.Text
+  description String?  @db.VarChar(255)
+  status      CredentialStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      Int
+
+  // 关联关系
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  miniprogramConfigs MiniprogramConfig[]
+
+  @@map("git_credentials")
+}
+
+// 通知配置表
+model NotificationConfig {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  type        NotificationType
+  webhook     String?  @db.VarChar(500)
+  emails      Json?    // 邮件列表
+  events      Json     // 通知事件 [start, success, fail]
+  template    Json?    // 通知模板配置
+  status      NotificationConfigStatus @default(ACTIVE)
+  
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      Int
+
+  // 关联关系
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  miniprogramConfigs MiniprogramConfig[]
+
+  @@map("notification_configs")
+}
+
+// 小程序基础表
 model Miniprogram {
   id            Int      @id @default(autoincrement())
   name          String   @db.VarChar(100)
   appId         String   @unique @db.VarChar(50)
   appSecret     String?  @db.VarChar(255)
-  privateKey    String   @db.Text
-  gitUrl        String   @db.VarChar(500)
-  gitBranch     String   @default("master") @db.VarChar(100)
-  gitUsername   String?  @db.VarChar(100)
-  gitPassword   String?  @db.VarChar(255)
-  gitToken      String?  @db.VarChar(255)
-  buildCommand  String?  @db.VarChar(500)
-  outputDir     String?  @db.VarChar(255)
-  projectType   ProjectType @default(NATIVE)
-  autoVersion   Boolean  @default(false)
+  privateKeyPath String  @db.VarChar(500) // 改为文件路径
   version       String   @default("1.0.0") @db.VarChar(20)
   description   String?  @db.Text
   status        MiniprogramStatus @default(ACTIVE)
-  config        Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   userId        Int
@@ -62,8 +99,68 @@ model Miniprogram {
   user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
   buildTasks   BuildTask[]
   webhooks     Webhook[]
+  config       MiniprogramConfig?
 
   @@map("miniprograms")
+}
+
+// 小程序配置表
+model MiniprogramConfig {
+  id            Int      @id @default(autoincrement())
+  miniprogramId Int      @unique
+  
+  // Git配置
+  gitUrl        String   @db.VarChar(500)
+  gitBranch     String   @default("master") @db.VarChar(100)
+  gitCredentialId Int?   // 关联Git认证凭据
+  
+  // 构建配置
+  install       Boolean  @default(true)
+  installCommand String  @default("npm install") @db.VarChar(500)
+  buildCommand  String?  @db.VarChar(500)
+  outputPath    String?  @db.VarChar(255)
+  projectType   ProjectType @default(NATIVE)
+  npm           Boolean  @default(false)
+  autoBuild     Boolean  @default(false)
+  buildTimeout  Int      @default(30) // 构建超时(分钟)
+  
+  // 版本管理
+  versionType   VersionType @default(MANUAL)
+  autoVersion   Boolean  @default(false)
+  
+  // 上传配置
+  es6           Boolean  @default(true)
+  es7           Boolean  @default(true)
+  minifyJS      Boolean  @default(true)
+  minifyWXML    Boolean  @default(true)
+  minifyWXSS    Boolean  @default(true)
+  minify        Boolean  @default(false)
+  codeProtect   Boolean  @default(false)
+  autoPrefixWXSS Boolean @default(true)
+  
+  // 预览配置
+  qrcodeFormat  QrcodeFormat @default(IMAGE)
+  qrcodeSize    Int      @default(200)
+  pagePath      String?  @db.VarChar(255)
+  searchQuery   String?  @db.VarChar(500)
+  scene         Int      @default(1011)
+  
+  // 通知配置
+  notificationConfigId Int? // 关联通知配置
+  
+  // 扩展配置
+  config        Json?
+  
+  // 时间戳
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 关联关系
+  miniprogram      Miniprogram @relation(fields: [miniprogramId], references: [id], onDelete: Cascade)
+  gitCredential    GitCredential? @relation(fields: [gitCredentialId], references: [id], onDelete: SetNull)
+  notificationConfig NotificationConfig? @relation(fields: [notificationConfigId], references: [id], onDelete: SetNull)
+
+  @@map("miniprogram_configs")
 }
 
 // 构建任务表
@@ -169,7 +266,32 @@ model SystemConfig {
   @@map("system_configs")
 }
 
-// 枚举定义
+enum GitAuthType {
+  SSH
+  HTTPS
+  TOKEN
+}
+
+enum CredentialStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum NotificationConfigStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum VersionType {
+  AUTO
+  MANUAL
+}
+
+enum QrcodeFormat {
+  IMAGE
+  BASE64
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE

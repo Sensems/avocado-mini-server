@@ -1,6 +1,7 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, MaxLength, IsUrl } from 'class-validator';
+import { IsString, IsOptional, MaxLength, ValidateNested, IsNumber, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProjectType } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { CreateMiniprogramConfigDto } from './create-miniprogram-config.dto';
 
 export class CreateMiniprogramDto {
   @ApiProperty({ description: '小程序名称', maxLength: 100 })
@@ -18,54 +19,10 @@ export class CreateMiniprogramDto {
   @IsString()
   appSecret?: string;
 
-  @ApiProperty({ description: '小程序私钥内容' })
+  @ApiProperty({ description: '私钥文件路径', maxLength: 500 })
   @IsString()
-  privateKey: string;
-
-  @ApiProperty({ description: 'Git仓库地址' })
-  @IsString()
-  @IsUrl()
-  gitUrl: string;
-
-  @ApiPropertyOptional({ description: 'Git分支', default: 'master' })
-  @IsOptional()
-  @IsString()
-  gitBranch?: string;
-
-  @ApiPropertyOptional({ description: 'Git用户名' })
-  @IsOptional()
-  @IsString()
-  gitUsername?: string;
-
-  @ApiPropertyOptional({ description: 'Git密码' })
-  @IsOptional()
-  @IsString()
-  gitPassword?: string;
-
-  @ApiPropertyOptional({ description: 'Git访问令牌' })
-  @IsOptional()
-  @IsString()
-  gitToken?: string;
-
-  @ApiPropertyOptional({ description: '构建命令' })
-  @IsOptional()
-  @IsString()
-  buildCommand?: string;
-
-  @ApiPropertyOptional({ description: '输出目录' })
-  @IsOptional()
-  @IsString()
-  outputDir?: string;
-
-  @ApiPropertyOptional({ description: '项目类型', enum: ProjectType, default: ProjectType.NATIVE })
-  @IsOptional()
-  @IsEnum(ProjectType)
-  projectType?: ProjectType;
-
-  @ApiPropertyOptional({ description: '是否自动管理版本号', default: false })
-  @IsOptional()
-  @IsBoolean()
-  autoVersion?: boolean;
+  @MaxLength(500)
+  privateKeyPath: string;
 
   @ApiPropertyOptional({ description: '当前版本号', default: '1.0.0' })
   @IsOptional()
@@ -77,7 +34,19 @@ export class CreateMiniprogramDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: '扩展配置' })
+  @ApiPropertyOptional({ description: 'Git认证凭据ID' })
   @IsOptional()
-  config?: Record<string, any>;
+  @IsNumber()
+  gitCredentialId?: number;
+
+  @ApiPropertyOptional({ description: '通知配置ID列表' })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  notificationConfigIds?: number[];
+
+  @ApiProperty({ description: '小程序配置信息' })
+  @ValidateNested()
+  @Type(() => CreateMiniprogramConfigDto)
+  config: CreateMiniprogramConfigDto;
 }

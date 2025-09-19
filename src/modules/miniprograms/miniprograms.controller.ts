@@ -9,18 +9,25 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { User, UserRole, MiniprogramStatus } from '@prisma/client';
 import { MiniprogramsService } from './miniprograms.service';
 import { CreateMiniprogramDto } from './dto/create-miniprogram.dto';
 import { UpdateMiniprogramDto } from './dto/update-miniprogram.dto';
+import { UploadPrivateKeyDto } from './dto/upload-private-key.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -133,5 +140,47 @@ export class MiniprogramsController {
   autoIncrementVersion(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.autoIncrementVersion(id, userId);
+  }
+
+  @Post(':id/upload-private-key')
+  @RequirePermissions('miniprograms:update')
+  @UseInterceptors(
+    FileInterceptor('privateKey', {
+      storage: diskStorage({
+        destination: './uploads/private-keys',
+        filename: (req, file, callback) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          callback(null, `private-key-${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        // 只允许上传 .key 或 .pem 文件
+        if (file.mimetype === 'application/x-pem-file' || 
+            file.originalname.endsWith('.key') || 
+            file.originalname.endsWith('.pem')) {
+          callback(null, true);
+        } else {
+          callback(new Error('只允许上传 .key 或 .pem 格式的私钥文件'), false);
+        }
+      },
+      limits: {
+        fileSize: 1024 * 1024, // 1MB
+      },
+    }),
+  )
+  @ApiOperation({ summary: '上传小程序私钥文件' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: '私钥文件上传成功' })
+  @ApiResponse({ status: 400, description: '文件格式不正确或文件过大' })
+  @ApiResponse({ status: 404, description: '小程序不存在' })
+  async uploadPrivateKey(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() uploadPrivateKeyDto: UploadPrivateKeyDto,
+  ) {
+    const userId = user.role === UserRole.ADMIN ? undefined : user.id;
+    return this.miniprogramsService.uploadPrivateKey(id, file, userId);
   }
 }

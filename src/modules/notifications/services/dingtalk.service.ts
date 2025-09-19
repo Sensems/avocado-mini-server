@@ -52,6 +52,8 @@ export class DingtalkService {
         timeout: 10000,
       });
 
+      console.log('response',response.data)
+
       if (response.data.errcode !== 0) {
         throw new Error(`钉钉API错误: ${response.data.errmsg}`);
       }

@@ -116,7 +116,11 @@ export class NotificationsService {
       const buildTask = await this.prisma.buildTask.findUnique({
         where: { id: taskId },
         include: {
-          miniprogram: true,
+          miniprogram: {
+            include: {
+              config: true,
+            },
+          },
           user: true,
         },
       });

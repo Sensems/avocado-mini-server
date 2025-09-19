@@ -10,7 +10,7 @@ const execAsync = promisify(exec);
 
 export interface BuildOptions {
   taskId: string;
-  miniprogram: Miniprogram;
+  miniprogram: Miniprogram & { config?: any };
   type: BuildType;
   branch: string;
   version: string;
@@ -83,12 +83,18 @@ export class BuildService {
    * 克隆代码仓库
    */
   private async cloneRepository(
-    miniprogram: Miniprogram,
+    miniprogram: Miniprogram & { config?: any },
     branch: string,
     targetDir: string,
     onLog?: (log: string) => Promise<void>,
   ): Promise<void> {
-    const { gitUrl, gitUsername, gitPassword, gitToken } = miniprogram;
+    const { config } = miniprogram;
+    
+    if (!config?.gitUrl) {
+      throw new Error('未配置Git仓库地址');
+    }
+
+    const { gitUrl, gitUsername, gitPassword, gitToken } = config;
     
     let cloneUrl = gitUrl;
     
@@ -123,7 +129,7 @@ export class BuildService {
    */
   private async installDependencies(
     projectDir: string,
-    miniprogram: Miniprogram,
+    miniprogram: Miniprogram & { config?: any },
     onLog?: (log: string) => Promise<void>,
   ): Promise<void> {
     const packageJsonPath = path.join(projectDir, 'package.json');
@@ -163,10 +169,10 @@ export class BuildService {
    */
   private async buildProject(
     projectDir: string,
-    miniprogram: Miniprogram,
+    miniprogram: Miniprogram & { config?: any },
     onLog?: (log: string) => Promise<void>,
   ): Promise<void> {
-    const { buildCommand, projectType } = miniprogram;
+    const { buildCommand, projectType } = miniprogram.config || {};
 
     // 如果没有构建命令，跳过构建步骤
     if (!buildCommand) {
@@ -194,13 +200,14 @@ export class BuildService {
    */
   private async uploadOrPreview(
     projectDir: string,
-    miniprogram: Miniprogram,
+    miniprogram: Miniprogram & { config?: any },
     type: BuildType,
     version: string,
     description?: string,
     onLog?: (log: string) => Promise<void>,
   ): Promise<BuildResult> {
-    const { appId, privateKey, outputDir } = miniprogram;
+    const { appId, privateKeyPath } = miniprogram;
+    const { outputDir } = miniprogram.config || {};
     
     // 确定小程序代码目录
     const miniprogramDir = outputDir ? path.join(projectDir, outputDir) : projectDir;
@@ -210,9 +217,10 @@ export class BuildService {
       throw new Error(`小程序代码目录不存在: ${miniprogramDir}`);
     }
 
-    // 创建私钥文件
-    const privateKeyPath = path.join(projectDir, 'private.key');
-    await fs.writeFile(privateKeyPath, privateKey);
+    // 检查私钥文件是否存在
+    if (!privateKeyPath || !await fs.pathExists(privateKeyPath)) {
+      throw new Error('私钥文件不存在，请先上传私钥文件');
+    }
 
     try {
       // 使用miniprogram-ci进行上传或预览
@@ -280,13 +288,8 @@ export class BuildService {
 
       return result;
 
-    } finally {
-      // 清理私钥文件
-      try {
-        await fs.remove(privateKeyPath);
-      } catch (error) {
-        this.logger.error('Failed to remove private key file:', error);
-      }
+    } catch (error) {
+      throw error;
     }
   }
 }

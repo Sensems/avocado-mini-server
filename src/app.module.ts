@@ -11,6 +11,8 @@ import { UsersModule } from './modules/users/users.module';
 import { MiniprogramsModule } from './modules/miniprograms/miniprograms.module';
 import { BuildTasksModule } from './modules/build-tasks/build-tasks.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { GitCredentialsModule } from './modules/git-credentials/git-credentials.module';
+import { NotificationConfigsModule } from './modules/notification-configs/notification-configs.module';
 import { SystemModule } from './modules/system/system.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { RedisModule } from './modules/redis/redis.module';
@@ -55,6 +57,8 @@ import configuration from './config/configuration';
     MiniprogramsModule,
     BuildTasksModule,
     NotificationsModule,
+    GitCredentialsModule,
+    NotificationConfigsModule,
     SystemModule,
     WebsocketModule,
   ],
