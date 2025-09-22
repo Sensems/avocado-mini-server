@@ -16,15 +16,24 @@ export class UpdateGitCredentialDto {
   @IsOptional()
   username?: string;
 
-  @ApiPropertyOptional({ description: '密码' })
+  @ApiPropertyOptional({ 
+    description: '密码 - 如果提供将自动加密存储',
+    example: 'your-new-password-here'
+  })
   @IsOptional()
   password?: string;
 
-  @ApiPropertyOptional({ description: '访问令牌' })
+  @ApiPropertyOptional({ 
+    description: '访问令牌 - 如果提供将自动加密存储',
+    example: 'ghp_xxxxxxxxxxxxxxxxxxxx'
+  })
   @IsOptional()
   token?: string;
 
-  @ApiPropertyOptional({ description: 'SSH私钥' })
+  @ApiPropertyOptional({ 
+    description: 'SSH私钥 - 如果提供将自动加密存储',
+    example: '-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----'
+  })
   @IsOptional()
   sshKey?: string;
 

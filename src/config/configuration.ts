@@ -32,17 +32,6 @@ export default () => ({
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE, 10) || 10485760, // 10MB
   },
 
-  // 微信小程序配置
-  wechat: {
-    appId: process.env.WECHAT_APP_ID,
-    appSecret: process.env.WECHAT_APP_SECRET,
-  },
-
-  // 钉钉通知配置
-  dingtalk: {
-    webhookUrl: process.env.DINGTALK_WEBHOOK_URL,
-    secret: process.env.DINGTALK_SECRET,
-  },
 
   // 构建配置
   build: {

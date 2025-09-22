@@ -1,12 +1,12 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Miniprogram, MiniprogramConfig, MiniprogramStatus, Prisma } from '@prisma/client';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { Miniprogram, MiniprogramStatus, Prisma, MiniprogramConfig, GitCredential } from '@prisma/client';
+import { PaginationDto, PaginationResult } from '../../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMiniprogramDto } from './dto/create-miniprogram.dto';
 import { UpdateMiniprogramDto } from './dto/update-miniprogram.dto';
-import { PaginationDto, PaginationResult } from '../../common/dto/pagination.dto';
 
 type MiniprogramWithConfig = Miniprogram & { 
   config?: MiniprogramConfig | null;
@@ -25,7 +25,7 @@ export class MiniprogramsService {
    * 创建小程序
    */
   async create(userId: number, createMiniprogramDto: CreateMiniprogramDto): Promise<Miniprogram> {
-    const { config, gitCredentialId, notificationConfigIds, ...miniprogramData } = createMiniprogramDto;
+    const { config, gitCredentialId, notificationConfigId, ...miniprogramData } = createMiniprogramDto;
 
     // 检查AppID是否已存在
     const existingMiniprogram = await this.prisma.miniprogram.findUnique({
@@ -47,12 +47,12 @@ export class MiniprogramsService {
     }
 
     // 验证通知配置是否存在且属于当前用户
-    if (notificationConfigIds && notificationConfigIds.length > 0) {
-      const notificationConfigs = await this.prisma.notificationConfig.findMany({
-        where: { id: { in: notificationConfigIds }, userId },
+    if (notificationConfigId) {
+      const notificationConfig = await this.prisma.notificationConfig.findFirst({
+        where: { id: notificationConfigId, userId },
       });
-      if (notificationConfigs.length !== notificationConfigIds.length) {
-        throw new BadRequestException('部分通知配置不存在或无权限使用');
+      if (!notificationConfig) {
+        throw new BadRequestException('通知配置不存在或无权限使用');
       }
     }
 
@@ -66,7 +66,7 @@ export class MiniprogramsService {
           create: {
             ...config,
             gitCredentialId: gitCredentialId || undefined,
-            notificationConfigId: notificationConfigIds && notificationConfigIds.length > 0 ? notificationConfigIds[0] : undefined,
+            notificationConfigId: notificationConfigId,
           },
         } : undefined,
       },
@@ -504,7 +504,7 @@ export class MiniprogramsService {
   async autoIncrementVersion(id: number, userId?: number): Promise<string> {
     const miniprogram: MiniprogramWithConfig = await this.findOne(id, userId);
     
-    if (!miniprogram.config?.autoVersion) {
+    if (miniprogram.config?.versionType === 'MANUAL') {
       return miniprogram.version;
     }
 

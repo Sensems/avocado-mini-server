@@ -2,12 +2,14 @@
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
-    "removeComments": true,
+    "removeComments": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2020",
     "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": false,
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
@@ -17,6 +19,8 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["src/*"],
       "@/common/*": ["src/common/*"],
@@ -24,5 +28,17 @@
       "@/config/*": ["src/config/*"],
       "@/utils/*": ["src/utils/*"]
     }
-  }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "prisma/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

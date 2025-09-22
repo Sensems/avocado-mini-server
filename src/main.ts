@@ -54,7 +54,19 @@ const bootstrap = async (): Promise<void> => {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    
+    // 设置 Swagger UI 文档页面
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true, // 保持授权状态
+      },
+      customSiteTitle: 'Avocado Mini API Docs',
+    });
+
+    // 提供 Swagger JSON 文件访问
+    app.getHttpAdapter().get('/api/docs-json', (req, res) => {
+      res.json(document);
+    });
   }
 
   const port = configService.get('PORT', 3000);
@@ -62,6 +74,7 @@ const bootstrap = async (): Promise<void> => {
 
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  console.log(`📄 Swagger JSON: http://localhost:${port}/api/docs-json`);
 };
 
 bootstrap().catch((error) => {

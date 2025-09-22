@@ -64,6 +64,7 @@ model NotificationConfig {
   name        String   @db.VarChar(100)
   type        NotificationType
   webhook     String?  @db.VarChar(500)
+  security    String?   @db.VarChar(500)
   emails      Json?    // 邮件列表
   events      Json     // 通知事件 [start, success, fail]
   template    Json?    // 通知模板配置
@@ -117,7 +118,7 @@ model MiniprogramConfig {
   // 构建配置
   install       Boolean  @default(true)
   installCommand String  @default("npm install") @db.VarChar(500)
-  buildCommand  String?  @db.VarChar(500)
+  buildCommand  String?   @default("npm build:mp-weixin") @db.VarChar(500)
   outputPath    String?  @db.VarChar(255)
   projectType   ProjectType @default(NATIVE)
   npm           Boolean  @default(false)
@@ -126,7 +127,6 @@ model MiniprogramConfig {
   
   // 版本管理
   versionType   VersionType @default(MANUAL)
-  autoVersion   Boolean  @default(false)
   
   // 上传配置
   es6           Boolean  @default(true)
@@ -143,14 +143,11 @@ model MiniprogramConfig {
   qrcodeSize    Int      @default(200)
   pagePath      String?  @db.VarChar(255)
   searchQuery   String?  @db.VarChar(500)
-  scene         Int      @default(1011)
+  scene         Int?      @default(1011)
   
   // 通知配置
   notificationConfigId Int? // 关联通知配置
-  
-  // 扩展配置
-  config        Json?
-  
+
   // 时间戳
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

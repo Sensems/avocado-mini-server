@@ -18,19 +18,28 @@ export class CreateGitCredentialDto {
   @MaxLength(100)
   username?: string;
 
-  @ApiPropertyOptional({ description: '密码（HTTPS认证时使用）' })
+  @ApiPropertyOptional({ 
+    description: '密码（HTTPS认证时使用）- 将自动加密存储',
+    example: 'your-password-here'
+  })
   @IsOptional()
   @IsString()
   @MaxLength(255)
   password?: string;
 
-  @ApiPropertyOptional({ description: '访问令牌（TOKEN认证时使用）' })
+  @ApiPropertyOptional({ 
+    description: '访问令牌（TOKEN认证时使用）- 将自动加密存储',
+    example: 'ghp_xxxxxxxxxxxxxxxxxxxx'
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   token?: string;
 
-  @ApiPropertyOptional({ description: 'SSH私钥（SSH认证时使用）' })
+  @ApiPropertyOptional({ 
+    description: 'SSH私钥（SSH认证时使用）- 将自动加密存储',
+    example: '-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----'
+  })
   @IsOptional()
   @IsString()
   sshKey?: string;

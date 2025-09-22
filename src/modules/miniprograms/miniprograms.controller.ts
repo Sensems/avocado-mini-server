@@ -1,38 +1,38 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
+  Get,
+  Param,
   ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
+  ApiBody,
   ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
+import { MiniprogramStatus, User, UserRole } from '@prisma/client';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { User, UserRole, MiniprogramStatus } from '@prisma/client';
-import { MiniprogramsService } from './miniprograms.service';
-import { CreateMiniprogramDto } from './dto/create-miniprogram.dto';
-import { UpdateMiniprogramDto } from './dto/update-miniprogram.dto';
-import { UploadPrivateKeyDto } from './dto/upload-private-key.dto';
+import { RequirePermissions } from '../../common/decorators/auth.decorator';
+import { CurrentUser } from '../../common/decorators/user.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../../common/decorators/auth.decorator';
-import { CurrentUser } from '../../common/decorators/user.decorator';
+import { CreateMiniprogramDto } from './dto/create-miniprogram.dto';
+import { UpdateMiniprogramDto } from './dto/update-miniprogram.dto';
+import { MiniprogramsService } from './miniprograms.service';
 
 @ApiTags('miniprograms')
 @ApiBearerAuth()
@@ -150,14 +150,11 @@ export class MiniprogramsController {
         destination: './uploads/private-keys',
         filename: (req, file, callback) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          callback(null, `private-key-${uniqueSuffix}${ext}`);
+          callback(null, `${req.params.id}-${uniqueSuffix}${extname(file.originalname)}`);
         },
       }),
       fileFilter: (req, file, callback) => {
-        // 只允许上传 .key 或 .pem 文件
-        if (file.mimetype === 'application/x-pem-file' || 
-            file.originalname.endsWith('.key') || 
+        if (file.originalname.endsWith('.key') || 
             file.originalname.endsWith('.pem')) {
           callback(null, true);
         } else {
@@ -171,6 +168,20 @@ export class MiniprogramsController {
   )
   @ApiOperation({ summary: '上传小程序私钥文件' })
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: '上传私钥文件',
+    schema: {
+      type: 'object',
+      properties: {
+        privateKey: {
+          type: 'string',
+          format: 'binary',
+          description: '私钥文件 (.key 或 .pem 格式，最大1MB)',
+        },
+      },
+      required: ['privateKey'],
+    },
+  })
   @ApiResponse({ status: 200, description: '私钥文件上传成功' })
   @ApiResponse({ status: 400, description: '文件格式不正确或文件过大' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
@@ -178,7 +189,6 @@ export class MiniprogramsController {
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
-    @Body() uploadPrivateKeyDto: UploadPrivateKeyDto,
   ) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.uploadPrivateKey(id, file, userId);

@@ -1,6 +1,6 @@
-import { IsString, IsOptional, MaxLength, ValidateNested, IsNumber, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { IsArray, IsNumber, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { CreateMiniprogramConfigDto } from './create-miniprogram-config.dto';
 
 export class CreateMiniprogramDto {
@@ -43,7 +43,7 @@ export class CreateMiniprogramDto {
   @IsOptional()
   @IsArray()
   @IsNumber({}, { each: true })
-  notificationConfigIds?: number[];
+  notificationConfigId?: number;
 
   @ApiProperty({ description: '小程序配置信息' })
   @ValidateNested()

@@ -12,10 +12,12 @@ import { MiniprogramsModule } from './modules/miniprograms/miniprograms.module';
 import { BuildTasksModule } from './modules/build-tasks/build-tasks.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { GitCredentialsModule } from './modules/git-credentials/git-credentials.module';
+import { GitOperationsModule } from './modules/git-operations/git-operations.module';
 import { NotificationConfigsModule } from './modules/notification-configs/notification-configs.module';
 import { SystemModule } from './modules/system/system.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { CommonModule } from './common/common.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './modules/auth/guards/permissions.guard';
 import configuration from './config/configuration';
@@ -52,12 +54,14 @@ import configuration from './config/configuration';
     // 核心模块
     PrismaModule,
     RedisModule,
+    CommonModule,
     AuthModule,
     UsersModule,
     MiniprogramsModule,
     BuildTasksModule,
     NotificationsModule,
     GitCredentialsModule,
+    GitOperationsModule,
     NotificationConfigsModule,
     SystemModule,
     WebsocketModule,

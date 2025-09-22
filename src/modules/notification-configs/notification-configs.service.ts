@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { NotificationConfigStatus, NotificationType } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationConfigDto } from './dto/create-notification-config.dto';
 import { UpdateNotificationConfigDto } from './dto/update-notification-config.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { NotificationConfigStatus, NotificationType } from '@prisma/client';
 
 @Injectable()
 export class NotificationConfigsService {
@@ -28,6 +28,7 @@ export class NotificationConfigsService {
         type: createNotificationConfigDto.type,
         description: createNotificationConfigDto.description,
         webhook: createNotificationConfigDto.config?.webhook,
+        security: createNotificationConfigDto.config?.security,
         emails: createNotificationConfigDto.config?.emails,
         events: createNotificationConfigDto.config?.events || ['start', 'success', 'fail'],
         template: createNotificationConfigDto.config?.template,

@@ -1,18 +1,25 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { GitCredential, CredentialStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { CreateGitCredentialDto } from './dto/create-git-credential.dto';
 import { UpdateGitCredentialDto } from './dto/update-git-credential.dto';
 import { PaginationDto, PaginationResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class GitCredentialsService {
-  constructor(private readonly prisma: PrismaService) {}
+  // 定义需要加密的敏感字段
+  private readonly sensitiveFields = ['password', 'token', 'sshKey'];
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryptionService: EncryptionService,
+  ) {}
 
   /**
    * 创建Git认证凭据
    */
-  async create(userId: number, createGitCredentialDto: CreateGitCredentialDto): Promise<GitCredential> {
+  async create(userId: number, createGitCredentialDto: CreateGitCredentialDto): Promise<Omit<GitCredential, 'password' | 'token' | 'sshKey'>> {
     // 检查名称是否已存在
     const existingCredential = await this.prisma.gitCredential.findFirst({
       where: {
@@ -25,12 +32,27 @@ export class GitCredentialsService {
       throw new ConflictException('该凭据名称已存在');
     }
 
+    // 加密敏感字段
+    const encryptedData = this.encryptionService.encryptSensitiveFields(
+      createGitCredentialDto,
+      this.sensitiveFields,
+    );
+
     return this.prisma.gitCredential.create({
       data: {
-        ...createGitCredentialDto,
+        ...encryptedData,
         userId,
-      },
-      include: {
+      } as any,
+      select: {
+        id: true,
+        name: true,
+        authType: true,
+        username: true,
+        description: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true,
         user: {
           select: {
             id: true,
@@ -39,6 +61,15 @@ export class GitCredentialsService {
           },
         },
       },
+      // include: {
+      //   user: {
+      //     select: {
+      //       id: true,
+      //       username: true,
+      //       nickname: true,
+      //     },
+      //   },
+      // },
     });
   }
 
@@ -48,7 +79,7 @@ export class GitCredentialsService {
   async findAll(
     userId: number,
     paginationDto?: PaginationDto,
-  ): Promise<PaginationResult<GitCredential>> {
+  ): Promise<PaginationResult<Omit<GitCredential, 'password' | 'token' | 'sshKey'>>> {
     const { page = 1, limit = 10, search, sortBy, sortOrder = 'desc' } = paginationDto || {};
     const skip = (page - 1) * limit;
 
@@ -76,7 +107,16 @@ export class GitCredentialsService {
         skip,
         take: limit,
         orderBy,
-        include: {
+        select: {
+          id: true,
+          name: true,
+          authType: true,
+          username: true,
+          description: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          userId: true,
           user: {
             select: {
               id: true,
@@ -110,13 +150,22 @@ export class GitCredentialsService {
   /**
    * 根据ID查询Git认证凭据
    */
-  async findOne(id: number, userId: number): Promise<GitCredential> {
+  async findOne(id: number, userId: number): Promise<Omit<GitCredential, 'password' | 'token' | 'sshKey'>> {
     const credential = await this.prisma.gitCredential.findFirst({
       where: {
         id,
         userId,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        authType: true,
+        username: true,
+        description: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true,
         user: {
           select: {
             id: true,
@@ -146,7 +195,7 @@ export class GitCredentialsService {
     id: number,
     userId: number,
     updateGitCredentialDto: UpdateGitCredentialDto,
-  ): Promise<GitCredential> {
+  ): Promise<Omit<GitCredential, 'password' | 'token' | 'sshKey'>> {
     // 检查凭据是否存在
     await this.findOne(id, userId);
 
@@ -167,10 +216,25 @@ export class GitCredentialsService {
       }
     }
 
+    // 加密敏感字段（只加密提供的字段）
+    const encryptedData = this.encryptionService.encryptSensitiveFields(
+      updateGitCredentialDto,
+      this.sensitiveFields,
+    );
+
     return this.prisma.gitCredential.update({
       where: { id },
-      data: updateGitCredentialDto,
-      include: {
+      data: encryptedData,
+      select: {
+        id: true,
+        name: true,
+        authType: true,
+        username: true,
+        description: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true,
         user: {
           select: {
             id: true,
@@ -235,5 +299,83 @@ export class GitCredentialsService {
         name: 'asc',
       },
     });
+  }
+
+  /**
+   * 内部方法：获取完整的凭据信息（包含敏感字段）
+   * 仅用于需要访问敏感字段的内部方法
+   */
+  private async findOneWithSensitiveFields(id: number, userId: number): Promise<GitCredential> {
+    const credential = await this.prisma.gitCredential.findFirst({
+      where: {
+        id,
+        userId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            nickname: true,
+          },
+        },
+        _count: {
+          select: {
+            miniprogramConfigs: true,
+          },
+        },
+      },
+    });
+
+    if (!credential) {
+      throw new NotFoundException('Git认证凭据不存在');
+    }
+
+    return credential;
+  }
+
+  /**
+   * 获取解密后的凭据信息（用于实际使用，如Git操作）
+   * 注意：此方法返回明文敏感信息，应谨慎使用
+   */
+  async getDecryptedCredential(id: number, userId: number): Promise<GitCredential & { decryptedPassword?: string; decryptedToken?: string; decryptedSshKey?: string }> {
+    const credential = await this.findOneWithSensitiveFields(id, userId);
+    
+    // 解密敏感字段
+    const decryptedCredential = {
+      ...credential,
+      decryptedPassword: credential.password ? this.encryptionService.decryptSensitiveData(credential.password) : undefined,
+      decryptedToken: credential.token ? this.encryptionService.decryptSensitiveData(credential.token) : undefined,
+      decryptedSshKey: credential.sshKey ? this.encryptionService.decryptSensitiveData(credential.sshKey) : undefined,
+    };
+
+    return decryptedCredential;
+  }
+
+  /**
+   * 验证凭据是否可用（解密测试）
+   */
+  async validateCredential(id: number, userId: number): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      const credential = await this.findOneWithSensitiveFields(id, userId);
+      
+      // 尝试解密所有敏感字段以验证数据完整性
+      if (credential.password) {
+        this.encryptionService.decryptSensitiveData(credential.password);
+      }
+      if (credential.token) {
+        this.encryptionService.decryptSensitiveData(credential.token);
+      }
+      if (credential.sshKey) {
+        this.encryptionService.decryptSensitiveData(credential.sshKey);
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return { 
+        isValid: false, 
+        error: error.message || '凭据验证失败' 
+      };
+    }
   }
 }
