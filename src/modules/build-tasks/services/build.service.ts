@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BuildType, Miniprogram } from '@prisma/client';
+import { BuildType, Miniprogram, MiniprogramConfig } from '@prisma/client';
 import { exec } from 'child_process';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -54,8 +54,12 @@ export class BuildService {
       await this.cloneRepository(miniprogram, branch, taskDir, onLog);
 
       // 3. 安装依赖
-      await onProgress?.(40, '安装项目依赖');
+      await onProgress?.(30, '安装项目依赖');
       await this.installDependencies(taskDir, miniprogram, onLog);
+
+      // 4. 执行原生小程序npm构建
+      await onProgress?.(40, '执行原生小程序npm构建');
+      await this.buildNativeMiniprogram(taskDir, miniprogram, onLog);
 
       // 4. 执行构建
       await onProgress?.(60, '执行项目构建');
@@ -63,18 +67,18 @@ export class BuildService {
 
       // 5. 上传或预览
       await onProgress?.(80, type === BuildType.UPLOAD ? '上传小程序' : '生成预览');
-      const result = await this.uploadOrPreview(taskDir, miniprogram, type, version, description, onLog);
+      const result = await this.uploadOrPreview(taskDir, miniprogram, type, version, description, onLog, taskId);
 
       // 6. 清理工作目录
-      // await onProgress?.(100, '清理临时文件');
-      // await fs.remove(taskDir);
+      await onProgress?.(100, '清理临时文件');
+      await fs.remove(taskDir);
 
       return result;
 
     } catch (error) {
       // 清理工作目录
       try {
-        // await fs.remove(taskDir);
+        await fs.remove(taskDir);
       } catch (cleanupError) {
         this.logger.error('Failed to cleanup workspace:', cleanupError);
       }
@@ -223,6 +227,60 @@ export class BuildService {
     }
   }
 
+  private async buildNativeMiniprogram(
+    projectDir: string,
+    miniprogram: Miniprogram & { config?: any },
+    onLog?: (log: string) => Promise<void>,
+  ) {
+    const { appId, privateKeyPath, config } = miniprogram;
+    const { outputDir } = miniprogram.config || {};
+    
+    // 确定小程序代码目录
+    const miniprogramDir = outputDir ? path.join(projectDir, outputDir) : projectDir;
+
+    // 如果不是原生小程序，跳过构建步骤
+    if (config.projectType !== 'NATIVE') {
+      await onLog?.('非原生小程序，跳过构建步骤');
+      return;
+    }
+
+    // 如果不是原生小程序，跳过构建步骤
+    if (!config.npm) {
+      await onLog?.('该小程序不需要构建npm，跳过构建步骤');
+      return;
+    }
+
+    // 执行原生小程序npm构建
+    try {
+      const ci = require('miniprogram-ci');
+      
+      const project = new ci.Project({
+        appid: appId,
+        type: 'miniProgram',
+        projectPath: miniprogramDir,
+        privateKeyPath,
+        ignores: [
+          'node_modules/**/*',
+        ],
+      });
+      
+      const warning = await ci.packNpm(project, {
+        ignores: ['pack_npm_ignore_list'],
+        reporter: async (infos) => { 
+          console.log(infos)
+          await onLog?.(`npm构建进度: ${JSON.stringify(infos)}`);
+        }
+      })
+      
+      await onLog?.(warning.map((it, index) => {
+              return `${index + 1}. ${it.msg}\t> code: ${it.code}\t@ ${it.jsPath}:${it.startLine}-${it.endLine}`
+            }).join('---------------\n'))
+    } catch (error) {
+      throw new Error(`原生小程序构建失败: ${error.message}`);
+    }
+  }
+
+
   /**
    * 构建项目
    */
@@ -259,13 +317,14 @@ export class BuildService {
    */
   private async uploadOrPreview(
     projectDir: string,
-    miniprogram: Miniprogram & { config?: any },
+    miniprogram: Miniprogram & { config?: MiniprogramConfig & { outputDir: string} },
     type: BuildType,
     version: string,
     description?: string,
     onLog?: (log: string) => Promise<void>,
+    taskId?: string,
   ): Promise<BuildResult> {
-    const { appId, privateKeyPath } = miniprogram;
+    const { appId, privateKeyPath, config } = miniprogram;
     const { outputDir } = miniprogram.config || {};
     
     // 确定小程序代码目录
@@ -305,15 +364,18 @@ export class BuildService {
           version,
           desc: description || `自动构建版本 ${version}`,
           setting: {
-            es6: true,
-            // es7: true,
-            // minify: true,
-            // codeProtect: false,
-            // autoPrefixWXSS: true,
+            es6: config.es6,
+            es7: config.es7,
+            minifyJS: config.minifyJS,
+            minifyWXML: config.minifyWXML,
+            minifyWXSS: config.minifyWXSS,
+            minify: config.minify,
+            codeProtect: config.codeProtect,
+            autoPrefixWXSS: config.autoPrefixWXSS,
           },
-          onProgressUpdate: (progress) => {
+          onProgressUpdate: async (progress) => {
             console.log('progress',progress);
-            onLog?.(`上传进度: ${progress}%`);
+            await onLog?.(`上传进度: ${JSON.stringify(progress)}`);
           },
         });
 
@@ -323,21 +385,26 @@ export class BuildService {
         
       } else if (type === BuildType.PREVIEW) {
         await onLog?.(`开始生成预览二维码`);
-        
-        const previewResult = await ci.preview({
+        await ci.preview({
           project,
           desc: description || `预览版本 ${version}`,
           setting: {
-            es6: true,
-            es7: true,
-            minify: false,
-            codeProtect: false,
-            autoPrefixWXSS: true,
+            es6: config.es6,
+            es7: config.es7,
+            minifyJS: config.minifyJS,
+            minifyWXML: config.minifyWXML,
+            minifyWXSS: config.minifyWXSS,
+            minify: config.minify,
+            codeProtect: config.codeProtect,
+            autoPrefixWXSS: config.autoPrefixWXSS,
           },
-          qrcodeFormat: 'image',
-          qrcodeOutputDest: path.join(projectDir, 'preview.jpg'),
-          onProgressUpdate: (progress) => {
-            onLog?.(`预览生成进度: ${progress}%`);
+          qrcodeFormat: config.qrcodeFormat.toLowerCase() || 'base64',
+          qrcodeOutputDest: path.join('./uploads/preview/', `${ taskId }.jpg`),
+          pagePath: config.pagePath || 'pages/index/index',
+          searchQuery: config.searchQuery || undefined,
+          scene: config.scene || 1011,
+          onProgressUpdate: async (progress) => {
+            await onLog?.(`预览生成进度: ${JSON.stringify(progress)}`);
           },
         });
 

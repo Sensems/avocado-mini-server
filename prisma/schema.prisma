@@ -140,7 +140,6 @@ model MiniprogramConfig {
   
   // 预览配置
   qrcodeFormat  QrcodeFormat @default(IMAGE)
-  qrcodeSize    Int      @default(200)
   pagePath      String?  @db.VarChar(255)
   searchQuery   String?  @db.VarChar(500)
   scene         Int?      @default(1011)
