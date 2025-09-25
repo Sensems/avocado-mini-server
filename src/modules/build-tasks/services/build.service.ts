@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Miniprogram, BuildType } from '@prisma/client';
+import { BuildType, Miniprogram } from '@prisma/client';
+import { exec } from 'child_process';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { exec } from 'child_process';
 import { promisify } from 'util';
+import { GitCredentialsService } from '../../git-credentials/git-credentials.service';
 
 const execAsync = promisify(exec);
 
@@ -29,14 +30,16 @@ export interface BuildResult {
 export class BuildService {
   private readonly logger = new Logger(BuildService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly gitCredentialsService: GitCredentialsService,
+  ) {}
 
   /**
    * 执行构建
    */
   async build(options: BuildOptions): Promise<BuildResult> {
     const { taskId, miniprogram, type, branch, version, description, onProgress, onLog } = options;
-    
     const workspaceDir = this.configService.get('build.workspace', '/tmp/build');
     const taskDir = path.join(workspaceDir, taskId);
 
@@ -63,15 +66,15 @@ export class BuildService {
       const result = await this.uploadOrPreview(taskDir, miniprogram, type, version, description, onLog);
 
       // 6. 清理工作目录
-      await onProgress?.(100, '清理临时文件');
-      await fs.remove(taskDir);
+      // await onProgress?.(100, '清理临时文件');
+      // await fs.remove(taskDir);
 
       return result;
 
     } catch (error) {
       // 清理工作目录
       try {
-        await fs.remove(taskDir);
+        // await fs.remove(taskDir);
       } catch (cleanupError) {
         this.logger.error('Failed to cleanup workspace:', cleanupError);
       }
@@ -94,22 +97,78 @@ export class BuildService {
       throw new Error('未配置Git仓库地址');
     }
 
-    const { gitUrl, gitUsername, gitPassword, gitToken } = config;
+    const { gitUrl, gitCredentialId } = config;
     
     let cloneUrl = gitUrl;
+    let gitUsername: string | undefined;
+    let gitPassword: string | undefined;
+    let gitToken: string | undefined;
     
-    // 处理认证
+    // 如果配置了Git凭证ID，则查询并解密凭证信息
+    if (gitCredentialId) {
+      try {
+        const credential = await this.gitCredentialsService.getDecryptedCredential(
+          gitCredentialId,
+          miniprogram.userId,
+        );
+        
+        // 根据认证类型设置相应的凭证信息
+        switch (credential.authType) {
+          case 'HTTPS':
+            gitUsername = credential.username;
+            gitPassword = credential.decryptedPassword;
+            break;
+          case 'TOKEN':
+            gitToken = credential.decryptedToken;
+            break;
+          case 'SSH':
+            // SSH认证需要特殊处理，这里暂时跳过
+            await onLog?.('SSH认证暂不支持，请使用HTTPS或TOKEN认证');
+            throw new Error('SSH认证暂不支持');
+          default:
+            await onLog?.(`不支持的认证类型: ${credential.authType}`);
+            throw new Error(`不支持的认证类型: ${credential.authType}`);
+        }
+      } catch (error) {
+        await onLog?.(`获取Git凭证失败: ${error.message}`);
+        throw new Error(`获取Git凭证失败: ${error.message}`);
+      }
+    }
+    
+    // 处理认证URL
     if (gitToken) {
-      // 使用Token认证
+      // 使用Token认证，Token需要URL编码
+      const encodedToken = encodeURIComponent(gitToken);
       if (gitUrl.includes('github.com')) {
-        cloneUrl = gitUrl.replace('https://', `https://${gitToken}@`);
+        cloneUrl = gitUrl.replace('https://', `https://${encodedToken}@`);
       } else if (gitUrl.includes('gitlab.com')) {
-        cloneUrl = gitUrl.replace('https://', `https://oauth2:${gitToken}@`);
+        cloneUrl = gitUrl.replace('https://', `https://oauth2:${encodedToken}@`);
+      } else {
+        // 其他Git服务器，尝试通用Token认证格式
+        cloneUrl = gitUrl.replace('https://', `https://${encodedToken}@`);
       }
     } else if (gitUsername && gitPassword) {
-      // 使用用户名密码认证
-      cloneUrl = gitUrl.replace('https://', `https://${gitUsername}:${gitPassword}@`);
+      // 使用用户名密码认证，用户名和密码都需要URL编码
+      const encodedUsername = encodeURIComponent(gitUsername);
+      const encodedPassword = encodeURIComponent(gitPassword);
+      cloneUrl = gitUrl.replace('https://', `https://${encodedUsername}:${encodedPassword}@`);
     }
+
+    // 检查目标目录是否存在，如果存在则清理
+    if (await fs.pathExists(targetDir)) {
+      await onLog?.(`目标目录已存在，正在清理: ${targetDir}`);
+      try {
+        await fs.remove(targetDir);
+        await onLog?.(`目录清理完成: ${targetDir}`);
+      } catch (cleanError) {
+        await onLog?.(`清理目录失败: ${cleanError.message}`);
+        throw new Error(`清理目录失败: ${cleanError.message}`);
+      }
+    }
+
+    // 确保父目录存在
+    const parentDir = path.dirname(targetDir);
+    await fs.ensureDir(parentDir);
 
     const cloneCmd = `git clone --depth 1 --branch ${branch} "${cloneUrl}" "${targetDir}"`;
     
@@ -231,7 +290,9 @@ export class BuildService {
         type: 'miniProgram',
         projectPath: miniprogramDir,
         privateKeyPath,
-        ignores: ['node_modules/**/*'],
+        ignores: [
+          'node_modules/**/*',
+        ],
       });
 
       let result: BuildResult = {};
@@ -245,12 +306,13 @@ export class BuildService {
           desc: description || `自动构建版本 ${version}`,
           setting: {
             es6: true,
-            es7: true,
-            minify: true,
-            codeProtect: false,
-            autoPrefixWXSS: true,
+            // es7: true,
+            // minify: true,
+            // codeProtect: false,
+            // autoPrefixWXSS: true,
           },
           onProgressUpdate: (progress) => {
+            console.log('progress',progress);
             onLog?.(`上传进度: ${progress}%`);
           },
         });

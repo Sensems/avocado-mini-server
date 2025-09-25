@@ -35,7 +35,7 @@ export default () => ({
 
   // 构建配置
   build: {
-    workspace: process.env.BUILD_WORKSPACE || '/tmp/build',
+    workspace: process.env.BUILD_WORKSPACE || './tmp/build',
     timeout: parseInt(process.env.BUILD_TIMEOUT, 10) || 1800000, // 30分钟
     maxConcurrentBuilds: parseInt(process.env.MAX_CONCURRENT_BUILDS, 10) || 3,
     queueSize: parseInt(process.env.BUILD_QUEUE_SIZE, 10) || 200,

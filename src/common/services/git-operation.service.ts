@@ -343,40 +343,9 @@ export class GitOperationService {
    */
   private async getDefaultBranch(git: SimpleGit, repositoryUrl: string): Promise<string> {
     try {
-      // 使用 git ls-remote 获取远程仓库的默认分支
-      const urlToUse = (git as any)._authenticatedUrl || repositoryUrl;
-      
-      // 获取远程仓库的 HEAD 引用
-      const result = await git.raw(['ls-remote', '--symref', urlToUse, 'HEAD']);
-      
-      if (result && result.trim()) {
-        const lines = result.trim().split('\n');
-        for (const line of lines) {
-          // 查找 ref: refs/heads/xxx 格式的行
-          if (line.startsWith('ref: refs/heads/')) {
-            const defaultBranch = line.replace('ref: refs/heads/', '').trim();
-            if (defaultBranch) {
-              return defaultBranch.split('\t')[0];
-            }
-          }
-        }
-      }
-      
-      // 如果无法获取默认分支，尝试常见的默认分支名
-      const commonBranches = ['main', 'master', 'develop'];
-      for (const branch of commonBranches) {
-        try {
-          const branchResult = await git.raw(['ls-remote', '--heads', urlToUse, `refs/heads/${branch}`]);
-          if (branchResult && branchResult.trim()) {
-            return branch;
-          }
-        } catch (branchError) {
-          // 继续尝试下一个分支
-          continue;
-        }
-      }
-      
-      return 'main'; // 最终默认返回 main
+      const result = await git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD']);
+      const defaultBranch = result.trim().replace('refs/remotes/origin/', '');
+      return defaultBranch || 'main';
     } catch (error) {
       this.logger.warn(`获取默认分支失败: ${error.message}`);
       return 'main'; // 默认返回main分支
