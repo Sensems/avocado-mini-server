@@ -190,7 +190,74 @@ export class MiniprogramsController {
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const userId = user.role === UserRole.ADMIN ? undefined : user.id;
-    return this.miniprogramsService.uploadPrivateKey(id, file, userId);
+    return this.miniprogramsService.uploadPrivateKey(id, file, user.role === UserRole.ADMIN ? undefined : user.id);
+  }
+
+  @Get(':id/webhooks')
+  @RequirePermissions('miniprograms:read')
+  @ApiOperation({ summary: '获取小程序的 Webhook 列表' })
+  @ApiResponse({ status: 200, description: '获取 Webhook 列表成功' })
+  @ApiResponse({ status: 404, description: '小程序不存在' })
+  getWebhooks(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() paginationDto: PaginationDto,
+  ) {
+    // 这里需要注入 WebhooksService 或者通过 MiniprogramsService 代理
+    // 为了保持模块解耦，建议在前端直接调用 webhooks API
+    return { message: '请使用 /webhooks API 并传入 appId 参数' };
+  }
+
+  @Post(':id/generate-webhook')
+  @RequirePermissions('miniprograms:update')
+  @ApiOperation({ summary: '为小程序生成 Webhook 配置' })
+  @ApiResponse({ status: 200, description: '生成 Webhook 配置成功' })
+  @ApiResponse({ status: 404, description: '小程序不存在' })
+  async generateWebhookConfig(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const secret = require('crypto').randomBytes(32).toString('hex');
+    
+    // 验证小程序是否存在且用户有权限
+    await this.miniprogramsService.findOne(id, user.role === UserRole.ADMIN ? undefined : user.id);
+    
+    return {
+      webhookConfig: {
+        url: `${baseUrl}/webhooks/events/${id}`,
+        secret,
+        events: ['push', 'pull_request'],
+      },
+      platformUrls: {
+        github: `${baseUrl}/webhooks/github/${id}`,
+        gitlab: `${baseUrl}/webhooks/gitlab/${id}`,
+        gitee: `${baseUrl}/webhooks/gitee/${id}`,
+      },
+      instructions: {
+        github: '在 GitHub 仓库设置中添加 Webhook，选择 application/json 格式',
+        gitlab: '在 GitLab 项目设置中添加 Webhook，选择 Push events 和 Merge request events',
+        gitee: '在 Gitee 仓库管理中添加 WebHook，选择 Push 和 Pull Request 事件',
+      },
+    };
+  }
+
+  @Get(':id/webhook-url')
+  @RequirePermissions('miniprograms:read')
+  @ApiOperation({ summary: '获取小程序的 Webhook URL' })
+  @ApiResponse({ status: 200, description: '获取 Webhook URL 成功' })
+  @ApiResponse({ status: 404, description: '小程序不存在' })
+  getWebhookUrl(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return {
+      webhookUrls: {
+        generic: `${baseUrl}/webhooks/events/${id}`,
+        github: `${baseUrl}/webhooks/github/${id}`,
+        gitlab: `${baseUrl}/webhooks/gitlab/${id}`,
+        gitee: `${baseUrl}/webhooks/gitee/${id}`,
+      },
+      instructions: {
+        github: '在 GitHub 仓库设置中添加 Webhook，选择 application/json 格式',
+        gitlab: '在 GitLab 项目设置中添加 Webhook，选择 Push events 和 Merge request events',
+        gitee: '在 Gitee 仓库管理中添加 WebHook，选择 Push 和 Pull Request 事件',
+      },
+    };
   }
 }

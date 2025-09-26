@@ -192,7 +192,7 @@ export class MiniprogramsService {
   /**
    * 根据ID查询小程序
    */
-  async findOne(id: number, userId?: number): Promise<Miniprogram> {
+  async findOne(id: number, userId?: number): Promise<MiniprogramWithConfig> {
     const where: Prisma.MiniprogramWhereInput = { id };
     
     // 如果指定了用户ID，只能查询自己的小程序

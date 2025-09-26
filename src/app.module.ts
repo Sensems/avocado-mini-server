@@ -16,6 +16,7 @@ import { GitOperationsModule } from './modules/git-operations/git-operations.mod
 import { NotificationConfigsModule } from './modules/notification-configs/notification-configs.module';
 import { SystemModule } from './modules/system/system.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { CommonModule } from './common/common.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
@@ -65,6 +66,7 @@ import configuration from './config/configuration';
     NotificationConfigsModule,
     SystemModule,
     WebsocketModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [
