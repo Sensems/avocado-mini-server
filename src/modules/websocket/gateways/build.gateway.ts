@@ -1,15 +1,16 @@
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets';
-import { Logger, UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../../users/users.service';
 
 interface AuthenticatedSocket extends Socket {
@@ -34,21 +35,22 @@ export class BuildGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly configService: ConfigService,
   ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
       // 从查询参数或头部获取token
       const token = client.handshake.auth?.token || client.handshake.query?.token;
-      
       if (!token) {
         this.logger.warn(`Client ${client.id} connected without token`);
         client.disconnect();
         return;
       }
-
       // 验证JWT token
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('jwt.secret'),
+      });
       const user = await this.usersService.findOne(payload.sub);
       
       if (!user) {
@@ -104,7 +106,6 @@ export class BuildGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error', { message: '未认证' });
       return;
     }
-
     const { taskId } = data;
     
     // 加入任务房间
@@ -147,57 +148,23 @@ export class BuildGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * 发送构建日志
    */
-  sendBuildLog(taskId: string, log: string) {
+  sendBuildLog(taskId: string, log: string, level: 'info' | 'warn' | 'error' = 'info') {
     this.server.to(`task:${taskId}`).emit('build-log', {
       taskId,
       log,
+      level,
       timestamp: new Date().toISOString(),
     });
   }
 
   /**
-   * 发送构建进度
+   * 发送构建状态变更（包含进度、消息和结果）
    */
-  sendBuildProgress(taskId: string, progress: number, message?: string) {
-    this.server.to(`task:${taskId}`).emit('build-progress', {
-      taskId,
-      progress,
-      message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  /**
-   * 发送构建状态变更
-   */
-  sendBuildStatus(taskId: string, status: string, data?: any) {
+  sendBuildStatus(taskId: string, status: string, data?: { progress?: number; message?: string; result?: any }) {
     this.server.to(`task:${taskId}`).emit('build-status', {
       taskId,
       status,
-      data,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  /**
-   * 发送构建错误
-   */
-  sendBuildError(taskId: string, error: string) {
-    this.server.to(`task:${taskId}`).emit('build-error', {
-      taskId,
-      error,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  /**
-   * 发送构建完成
-   */
-  sendBuildComplete(taskId: string, success: boolean, result?: any) {
-    this.server.to(`task:${taskId}`).emit('build-complete', {
-      taskId,
-      success,
-      result,
+      ...data,
       timestamp: new Date().toISOString(),
     });
   }

@@ -1,28 +1,29 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
   Param,
-  Query,
   ParseIntPipe,
+  Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { User, UserRole } from '@prisma/client';
-import { BuildTasksService } from './build-tasks.service';
-import { CreateBuildTaskDto } from './dto/create-build-task.dto';
+import { RequirePermissions } from '../../common/decorators/auth.decorator';
+import { CurrentUser } from '../../common/decorators/user.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../../common/decorators/auth.decorator';
-import { CurrentUser } from '../../common/decorators/user.decorator';
+import { BuildTasksService } from './build-tasks.service';
+import { CreateBuildTaskDto } from './dto/create-build-task.dto';
+import { BuildTaskQueryDto } from './dto/build-task-query.dto';
 
 @ApiTags('build-tasks')
 @ApiBearerAuth()
@@ -53,12 +54,13 @@ export class BuildTasksController {
   @ApiQuery({ name: 'sortOrder', required: false, description: '排序方向' })
   findAll(
     @CurrentUser() user: User,
-    @Query('appId', ParseIntPipe) appId?: number,
-    @Query() paginationDto?: PaginationDto,
+    @Query() queryDto: BuildTaskQueryDto,
   ) {
     // 普通用户只能查看自己的构建任务，管理员可以查看所有
+    console.log('appId', queryDto.appId);
+    console.log('queryDto', queryDto);
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
-    return this.buildTasksService.findAll(userId, appId, paginationDto);
+    return this.buildTasksService.findAll(userId, queryDto.appId, queryDto);
   }
 
   @Get('statistics')
@@ -68,7 +70,7 @@ export class BuildTasksController {
   @ApiQuery({ name: 'appId', required: false, description: '小程序ID' })
   getStatistics(
     @CurrentUser() user: User,
-    @Query('appId', ParseIntPipe) appId?: number,
+    @Query('appId', new ParseIntPipe({ optional: true })) appId?: number,
   ) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.buildTasksService.getStatistics(userId, appId);

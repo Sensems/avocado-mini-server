@@ -6,6 +6,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { promisify } from 'util';
 import { GitCredentialsService } from '../../git-credentials/git-credentials.service';
+import { BuildGateway } from '../../websocket/gateways/build.gateway';
 
 const execAsync = promisify(exec);
 
@@ -33,6 +34,7 @@ export class BuildService {
   constructor(
     private readonly configService: ConfigService,
     private readonly gitCredentialsService: GitCredentialsService,
+    private readonly buildGateway: BuildGateway,
   ) {}
 
   /**
@@ -43,39 +45,63 @@ export class BuildService {
     const workspaceDir = this.configService.get('build.workspace', '/tmp/build');
     const taskDir = path.join(workspaceDir, taskId);
 
+    // 创建统一的WebSocket通信函数
+    const sendLog = async (log: string, level: 'info' | 'warn' | 'error' = 'info') => {
+      this.buildGateway.sendBuildLog(taskId, log, level);
+      await onLog?.(log);
+    };
+
+    const updateStatus = async (status: string, progress?: number, message?: string, result?: any) => {
+      this.buildGateway.sendBuildStatus(taskId, status, { progress, message, result });
+      if (progress !== undefined && message) {
+        await onProgress?.(progress, message);
+      }
+    };
+
     try {
+      // 发送构建开始状态
+      await updateStatus('BUILDING', 0, '开始构建任务');
+
       // 1. 创建工作目录
-      await onProgress?.(10, '创建工作目录');
+      await updateStatus('BUILDING', 10, '创建工作目录');
       await fs.ensureDir(taskDir);
-      await onLog?.(`工作目录: ${taskDir}`);
+      await sendLog(`工作目录: ${taskDir}`);
 
       // 2. 克隆代码
-      await onProgress?.(20, '克隆代码仓库');
-      await this.cloneRepository(miniprogram, branch, taskDir, onLog);
+      await updateStatus('BUILDING', 20, '克隆代码仓库');
+      await this.cloneRepository(miniprogram, branch, taskDir, sendLog);
 
       // 3. 安装依赖
-      await onProgress?.(30, '安装项目依赖');
-      await this.installDependencies(taskDir, miniprogram, onLog);
+      await updateStatus('BUILDING', 30, '安装项目依赖');
+      await this.installDependencies(taskDir, miniprogram, sendLog);
 
       // 4. 执行原生小程序npm构建
-      await onProgress?.(40, '执行原生小程序npm构建');
-      await this.buildNativeMiniprogram(taskDir, miniprogram, onLog);
+      await updateStatus('BUILDING', 40, '执行原生小程序npm构建');
+      await this.buildNativeMiniprogram(taskDir, miniprogram, sendLog);
 
-      // 4. 执行构建
-      await onProgress?.(60, '执行项目构建');
-      await this.buildProject(taskDir, miniprogram, onLog);
+      // 5. 执行构建
+      await updateStatus('BUILDING', 60, '执行项目构建');
+      await this.buildProject(taskDir, miniprogram, sendLog);
 
-      // 5. 上传或预览
-      await onProgress?.(80, type === BuildType.UPLOAD ? '上传小程序' : '生成预览');
-      const result = await this.uploadOrPreview(taskDir, miniprogram, type, version, description, onLog, taskId);
+      // 6. 上传或预览
+      await updateStatus('BUILDING', 80, type === BuildType.UPLOAD ? '上传小程序' : '生成预览');
+      const result = await this.uploadOrPreview(taskDir, miniprogram, type, version, description, sendLog, taskId);
 
-      // 6. 清理工作目录
-      await onProgress?.(100, '清理临时文件');
+      // 7. 清理工作目录
+      await updateStatus('BUILDING', 90, '清理临时文件');
       await fs.remove(taskDir);
+
+      // 发送构建成功状态
+      await updateStatus('SUCCESS', 100, '构建完成', result);
+      await sendLog('构建任务执行成功');
 
       return result;
 
     } catch (error) {
+      // 发送构建失败状态
+      await updateStatus('FAILED', undefined, error.message, { error: error.message });
+      await sendLog(`构建失败: ${error.message}`, 'error');
+
       // 清理工作目录
       try {
         await fs.remove(taskDir);
@@ -240,7 +266,7 @@ export class BuildService {
 
     // 如果不是原生小程序，跳过构建步骤
     if (config.projectType !== 'NATIVE') {
-      await onLog?.('非原生小程序，跳过构建步骤');
+      await onLog?.('非原生小程序，跳过npm构建步骤');
       return;
     }
 
@@ -294,6 +320,11 @@ export class BuildService {
     // 如果没有构建命令，跳过构建步骤
     if (!buildCommand) {
       await onLog?.('未配置构建命令，跳过构建步骤');
+      return;
+    }
+
+    if (projectType === 'NATIVE') {
+      await onLog?.('微信小程序，跳过构建步骤');
       return;
     }
 
