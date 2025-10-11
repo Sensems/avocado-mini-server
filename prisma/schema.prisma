@@ -12,7 +12,7 @@ datasource db {
 
 // 用户表
 model User {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid()) @db.VarChar(30)
   username    String   @unique @db.VarChar(50)
   email       String   @unique @db.VarChar(100)
   password    String   @db.VarChar(255)
@@ -38,7 +38,7 @@ model User {
 
 // Git认证凭据表
 model GitCredential {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid()) @db.VarChar(30)
   name        String   @db.VarChar(100)
   authType    GitAuthType
   username    String?  @db.VarChar(100)
@@ -49,7 +49,7 @@ model GitCredential {
   status      CredentialStatus @default(ACTIVE)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  userId      Int
+  userId      String
 
   // 关联关系
   user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -60,7 +60,7 @@ model GitCredential {
 
 // 通知配置表
 model NotificationConfig {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid()) @db.VarChar(30)
   name        String   @db.VarChar(100)
   type        NotificationType
   webhook     String?  @db.VarChar(500)
@@ -73,7 +73,7 @@ model NotificationConfig {
   description String?  @db.VarChar(255)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  userId      Int
+  userId      String
 
   // 关联关系
   user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -84,7 +84,7 @@ model NotificationConfig {
 
 // 小程序基础表
 model Miniprogram {
-  id            Int      @id @default(autoincrement())
+  id            String   @id @default(cuid()) @db.VarChar(30)
   name          String   @db.VarChar(100)
   appId         String   @unique @db.VarChar(50)
   appSecret     String?  @db.VarChar(255)
@@ -94,7 +94,7 @@ model Miniprogram {
   status        MiniprogramStatus @default(ACTIVE)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  userId        Int
+  userId        String
 
   // 关联关系
   user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -107,13 +107,13 @@ model Miniprogram {
 
 // 小程序配置表
 model MiniprogramConfig {
-  id            Int      @id @default(autoincrement())
-  miniprogramId Int      @unique
+  id            String   @id @default(cuid()) @db.VarChar(30)
+  miniprogramId String   @unique
   
   // Git配置
   gitUrl        String   @db.VarChar(500)
   gitBranch     String   @default("master") @db.VarChar(100)
-  gitCredentialId Int?   // 关联Git认证凭据
+  gitCredentialId String?   // 关联Git认证凭据
   
   // 构建配置
   install       Boolean  @default(true)
@@ -145,7 +145,7 @@ model MiniprogramConfig {
   scene         Int?      @default(1011)
   
   // 通知配置
-  notificationConfigId Int? // 关联通知配置
+  notificationConfigId String? // 关联通知配置
 
   // 时间戳
   createdAt     DateTime @default(now())
@@ -161,8 +161,8 @@ model MiniprogramConfig {
 
 // 构建任务表
 model BuildTask {
-  id              String      @id @default(uuid()) @db.VarChar(36)
-  appId           Int
+  id              String      @id @default(cuid()) @db.VarChar(30)
+  appId           String
   type            BuildType
   status          TaskStatus  @default(PENDING)
   priority        Int         @default(2)
@@ -195,7 +195,7 @@ model BuildTask {
   qrcodeUrl       String?     @db.VarChar(500)
   packageSize     Json?       // 包大小信息
   
-  userId          Int
+  userId          String
 
   // 关联关系
   miniprogram     Miniprogram @relation(fields: [appId], references: [id], onDelete: Cascade)
@@ -207,7 +207,7 @@ model BuildTask {
 
 // 通知表
 model Notification {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid()) @db.VarChar(30)
   type        NotificationType
   title       String   @db.VarChar(200)
   content     String   @db.Text
@@ -219,8 +219,8 @@ model Notification {
   sentAt      DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  taskId      String?  @db.VarChar(36)
-  userId      Int
+  taskId      String?  @db.VarChar(30)
+  userId      String
 
   // 关联关系
   buildTask   BuildTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
@@ -231,7 +231,7 @@ model Notification {
 
 // Webhook表
 model Webhook {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid()) @db.VarChar(30)
   url         String   @db.VarChar(500)
   secret      String?  @db.VarChar(255)
   events      Json     // 监听的事件类型
@@ -240,7 +240,7 @@ model Webhook {
   lastTrigger DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  appId       Int
+  appId       String
 
   // 关联关系
   miniprogram Miniprogram @relation(fields: [appId], references: [id], onDelete: Cascade)
@@ -250,7 +250,7 @@ model Webhook {
 
 // 系统配置表
 model SystemConfig {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid()) @db.VarChar(30)
   key         String   @unique @db.VarChar(100)
   value       Json
   description String?  @db.VarChar(255)

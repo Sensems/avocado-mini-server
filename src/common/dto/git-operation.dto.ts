@@ -19,7 +19,8 @@ export class GetRepositoryBranchesDto {
     example: 1
   })
   @IsNotEmpty()
-  credentialId: number;
+  @IsString()
+  credentialId: string;
 }
 
 /**

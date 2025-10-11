@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Notification, NotificationType, NotificationStatus } from '@prisma/client';
+import { Notification, NotificationStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DingtalkService } from './services/dingtalk.service';
 
@@ -10,7 +10,7 @@ export interface SendNotificationOptions {
   recipient: string;
   config?: Record<string, any>;
   taskId?: string;
-  userId: number;
+  userId: string;
 }
 
 @Injectable()

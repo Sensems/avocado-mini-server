@@ -37,13 +37,13 @@ export class CreateMiniprogramDto {
   @ApiPropertyOptional({ description: 'Git认证凭据ID' })
   @IsOptional()
   @IsNumber()
-  gitCredentialId?: number;
+  gitCredentialId?: string;
 
   @ApiPropertyOptional({ description: '通知配置ID列表' })
   @IsOptional()
   @IsArray()
   @IsNumber({}, { each: true })
-  notificationConfigId?: number;
+  notificationConfigId?: string;
 
   @ApiProperty({ description: '小程序配置信息' })
   @ValidateNested()

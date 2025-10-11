@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User, UserStatus } from '@prisma/client';
 import { UsersService } from '../users/users.service';
@@ -7,7 +7,7 @@ import { UsersService } from '../users/users.service';
 export type UserWithoutPassword = Omit<User, 'password'>;
 
 export interface JwtPayload {
-  sub: number;
+  sub: string;
   username: string;
   email: string;
   role: string;

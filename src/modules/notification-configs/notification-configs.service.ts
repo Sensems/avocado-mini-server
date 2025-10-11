@@ -9,7 +9,7 @@ import { UpdateNotificationConfigDto } from './dto/update-notification-config.dt
 export class NotificationConfigsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userId: number, createNotificationConfigDto: CreateNotificationConfigDto) {
+  async create(userId: string, createNotificationConfigDto: CreateNotificationConfigDto) {
     // 检查配置名称是否已存在
     const existingConfig = await this.prisma.notificationConfig.findFirst({
       where: {
@@ -38,7 +38,7 @@ export class NotificationConfigsService {
     });
   }
 
-  async findAll(userId: number, paginationDto: PaginationDto) {
+  async findAll(userId: string, paginationDto: PaginationDto) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = paginationDto;
     const skip = (page - 1) * limit;
 
@@ -78,7 +78,7 @@ export class NotificationConfigsService {
     };
   }
 
-  async findAvailableConfigs(userId: number) {
+  async findAvailableConfigs(userId: string) {
     return this.prisma.notificationConfig.findMany({
       where: {
         userId,
@@ -94,7 +94,7 @@ export class NotificationConfigsService {
     });
   }
 
-  async findOne(id: number, userId: number) {
+  async findOne(id: string, userId: string) {
     const config = await this.prisma.notificationConfig.findFirst({
       where: { id, userId },
       include: {
@@ -113,7 +113,7 @@ export class NotificationConfigsService {
     return config;
   }
 
-  async update(id: number, userId: number, updateNotificationConfigDto: UpdateNotificationConfigDto) {
+  async update(id: string, userId: string, updateNotificationConfigDto: UpdateNotificationConfigDto) {
     // 检查配置是否存在
     const existingConfig = await this.prisma.notificationConfig.findFirst({
       where: { id, userId },
@@ -147,7 +147,7 @@ export class NotificationConfigsService {
     });
   }
 
-  async remove(id: number, userId: number) {
+  async remove(id: string, userId: string) {
     // 检查配置是否存在
     const config = await this.prisma.notificationConfig.findFirst({
       where: { id, userId },
@@ -174,7 +174,7 @@ export class NotificationConfigsService {
     });
   }
 
-  async batchUpdateStatus(ids: number[], status: NotificationConfigStatus, userId: number) {
+  async batchUpdateStatus(ids: string[], status: NotificationConfigStatus, userId: string) {
     // 检查所有配置是否属于当前用户
     const configs = await this.prisma.notificationConfig.findMany({
       where: {
@@ -199,7 +199,7 @@ export class NotificationConfigsService {
     });
   }
 
-  async testNotificationConfig(id: number, userId: number) {
+  async testNotificationConfig(id: string, userId: string) {
     const config = await this.findOne(id, userId);
     
     // 这里可以实现具体的通知测试逻辑

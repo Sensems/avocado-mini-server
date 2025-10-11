@@ -4,8 +4,8 @@ import { BuildType, TriggerType } from '@prisma/client';
 
 export class CreateBuildTaskDto {
   @ApiProperty({ description: '小程序ID' })
-  @IsInt()
-  appId: number;
+  @IsString()
+  appId: string;
 
   @ApiProperty({ description: '构建类型', enum: BuildType })
   @IsEnum(BuildType)

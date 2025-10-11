@@ -1,31 +1,30 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
-  ParseIntPipe,
-  UseGuards,
+  UseGuards
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import { User, CredentialStatus } from '@prisma/client';
-import { GitCredentialsService } from './git-credentials.service';
-import { CreateGitCredentialDto } from './dto/create-git-credential.dto';
-import { UpdateGitCredentialDto } from './dto/update-git-credential.dto';
+import { CredentialStatus, User } from '@prisma/client';
+import { RequirePermissions } from '../../common/decorators/auth.decorator';
+import { CurrentUser } from '../../common/decorators/user.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../../common/decorators/auth.decorator';
-import { CurrentUser } from '../../common/decorators/user.decorator';
+import { CreateGitCredentialDto } from './dto/create-git-credential.dto';
+import { UpdateGitCredentialDto } from './dto/update-git-credential.dto';
+import { GitCredentialsService } from './git-credentials.service';
 
 @ApiTags('git-credentials')
 @ApiBearerAuth()
@@ -69,7 +68,7 @@ export class GitCredentialsController {
   @ApiOperation({ summary: '根据ID获取Git认证凭据信息' })
   @ApiResponse({ status: 200, description: '获取Git认证凭据信息成功' })
   @ApiResponse({ status: 404, description: 'Git认证凭据不存在' })
-  findOne(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  findOne(@CurrentUser() user: User, @Param('id') id: string) {
     return this.gitCredentialsService.findOne(id, user.id);
   }
 
@@ -81,7 +80,7 @@ export class GitCredentialsController {
   @ApiResponse({ status: 409, description: '凭据名称已存在' })
   update(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateGitCredentialDto: UpdateGitCredentialDto,
   ) {
     return this.gitCredentialsService.update(id, user.id, updateGitCredentialDto);
@@ -93,7 +92,7 @@ export class GitCredentialsController {
   @ApiResponse({ status: 200, description: 'Git认证凭据删除成功' })
   @ApiResponse({ status: 404, description: 'Git认证凭据不存在' })
   @ApiResponse({ status: 400, description: '凭据正在被使用，无法删除' })
-  remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  remove(@CurrentUser() user: User, @Param('id') id: string) {
     return this.gitCredentialsService.remove(id, user.id);
   }
 
@@ -103,7 +102,7 @@ export class GitCredentialsController {
   @ApiResponse({ status: 200, description: 'Git认证凭据状态更新成功' })
   batchUpdateStatus(
     @CurrentUser() user: User,
-    @Body() body: { ids: number[]; status: CredentialStatus },
+    @Body() body: { ids: string[]; status: CredentialStatus },
   ) {
     return this.gitCredentialsService.batchUpdateStatus(body.ids, body.status, user.id);
   }

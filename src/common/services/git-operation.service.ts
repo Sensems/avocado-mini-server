@@ -31,7 +31,7 @@ export class GitOperationService {
    * 获取仓库分支列表
    */
   async getRepositoryBranches(
-    userId: number,
+    userId: string,
     dto: GetRepositoryBranchesDto,
   ): Promise<GetRepositoryBranchesResponseDto> {
     try {

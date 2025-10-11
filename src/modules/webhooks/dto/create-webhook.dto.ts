@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsString, IsArray, IsOptional, IsUrl, IsEnum, IsBoolean } from 'class-validator';
 
 export enum WebhookEvent {
   PUSH = 'push',
@@ -30,6 +30,6 @@ export class CreateWebhookDto {
   events: WebhookEvent[];
 
   @ApiProperty({ description: '小程序ID' })
-  @IsNumber({}, { message: '小程序ID必须是数字' })
-  appId: number;
+  @IsString()
+  appId: string;
 }

@@ -64,7 +64,7 @@ export class WebhooksService {
   /**
    * 创建 Webhook
    */
-  async create(userId: number, createWebhookDto: CreateWebhookDto): Promise<Webhook> {
+  async create(userId: string, createWebhookDto: CreateWebhookDto): Promise<Webhook> {
     const { appId, ...webhookData } = createWebhookDto;
 
     // 检查小程序是否存在且用户有权限
@@ -107,9 +107,9 @@ export class WebhooksService {
    * 获取 Webhook 列表
    */
   async findAll(
-    userId?: number,
+    userId?: string,
     paginationDto?: PaginationDto,
-    appId?: number,
+    appId?: string,
   ): Promise<PaginationResult<Webhook>> {
     const { page = 1, limit = 10 } = paginationDto || {};
     const skip = (page - 1) * limit;
@@ -169,7 +169,7 @@ export class WebhooksService {
   /**
    * 获取 Webhook 详情
    */
-  async findOne(id: number, userId?: number): Promise<Webhook> {
+  async findOne(id: string, userId?: string): Promise<Webhook> {
     const webhook = await this.prisma.webhook.findUnique({
       where: { id },
       include: {
@@ -196,9 +196,9 @@ export class WebhooksService {
    * 更新 Webhook
    */
   async update(
-    id: number,
+    id: string,
     updateWebhookDto: UpdateWebhookDto,
-    userId?: number,
+    userId?: string,
   ): Promise<Webhook> {
     const webhook = await this.findOne(id, userId);
 
@@ -214,7 +214,7 @@ export class WebhooksService {
   /**
    * 删除 Webhook
    */
-  async remove(id: number, userId?: number): Promise<void> {
+  async remove(id: string, userId?: string): Promise<void> {
     const webhook = await this.findOne(id, userId);
 
     await this.prisma.webhook.delete({
@@ -225,7 +225,7 @@ export class WebhooksService {
   /**
    * 测试 Webhook
    */
-  async testWebhook(id: number, userId?: number): Promise<{ success: boolean; message: string; data?: any }> {
+  async testWebhook(id: string, userId?: string): Promise<{ success: boolean; message: string; data?: any }> {
     const webhook = await this.findOne(id, userId);
 
     try {
@@ -384,7 +384,7 @@ export class WebhooksService {
    * 处理 Git 事件
    */
   async handleGitEvent(
-    appId: number,
+    appId: string,
     eventType: string,
     payload: any,
     headers: Record<string, string>,
@@ -790,7 +790,7 @@ export class WebhooksService {
   /**
    * 生成 Webhook 配置
    */
-  async generateWebhookConfig(userId: number, appId: number): Promise<{
+  async generateWebhookConfig(userId: string, appId: string): Promise<{
     url: string;
     secret: string;
     githubUrl: string;

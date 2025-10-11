@@ -24,7 +24,7 @@ export class MiniprogramsService {
   /**
    * 创建小程序
    */
-  async create(userId: number, createMiniprogramDto: CreateMiniprogramDto): Promise<Miniprogram> {
+  async create(userId: string, createMiniprogramDto: CreateMiniprogramDto): Promise<Miniprogram> {
     const { config, gitCredentialId, notificationConfigId, ...miniprogramData } = createMiniprogramDto;
 
     // 检查AppID是否已存在
@@ -105,7 +105,7 @@ export class MiniprogramsService {
    * 分页查询小程序列表
    */
   async findAll(
-    userId?: number,
+    userId?: string,
     paginationDto?: PaginationDto,
   ): Promise<PaginationResult<Miniprogram>> {
     const { page = 1, limit = 10, search, sortBy, sortOrder = 'desc' } = paginationDto || {};
@@ -192,7 +192,7 @@ export class MiniprogramsService {
   /**
    * 根据ID查询小程序
    */
-  async findOne(id: number, userId?: number): Promise<MiniprogramWithConfig> {
+  async findOne(id: string, userId?: string): Promise<MiniprogramWithConfig> {
     const where: Prisma.MiniprogramWhereInput = { id };
     
     // 如果指定了用户ID，只能查询自己的小程序
@@ -271,9 +271,9 @@ export class MiniprogramsService {
    * 更新小程序信息
    */
   async update(
-    id: number,
+    id: string,
     updateMiniprogramDto: UpdateMiniprogramDto,
-    userId?: number,
+    userId?: string,
   ): Promise<Miniprogram> {
     const { config, gitCredentialId, notificationConfigIds, ...miniprogramData } = updateMiniprogramDto;
 
@@ -377,7 +377,7 @@ export class MiniprogramsService {
   /**
    * 删除小程序
    */
-  async remove(id: number, userId?: number): Promise<void> {
+  async remove(id: string, userId?: string): Promise<void> {
     // 检查小程序是否存在
     await this.findOne(id, userId);
 
@@ -408,7 +408,7 @@ export class MiniprogramsService {
   /**
    * 批量更新小程序状态
    */
-  async batchUpdateStatus(ids: number[], status: MiniprogramStatus, userId?: number): Promise<void> {
+  async batchUpdateStatus(ids: string[], status: MiniprogramStatus, userId?: string): Promise<void> {
     const where: Prisma.MiniprogramWhereInput = { id: { in: ids } };
     if (userId) {
       where.userId = userId;
@@ -423,7 +423,7 @@ export class MiniprogramsService {
   /**
    * 获取小程序统计信息
    */
-  async getStatistics(userId?: number): Promise<Record<string, any>> {
+  async getStatistics(userId?: string): Promise<Record<string, any>> {
     const where: Prisma.MiniprogramWhereInput = {};
     if (userId) {
       where.userId = userId;
@@ -447,7 +447,7 @@ export class MiniprogramsService {
   /**
    * 获取小程序的构建历史统计
    */
-  async getBuildStatistics(id: number, userId?: number): Promise<Record<string, any>> {
+  async getBuildStatistics(id: string, userId?: string): Promise<Record<string, any>> {
     // 检查小程序是否存在
     await this.findOne(id, userId);
 
@@ -486,7 +486,7 @@ export class MiniprogramsService {
   /**
    * 更新小程序版本号
    */
-  async updateVersion(id: number, version: string, userId?: number): Promise<void> {
+  async updateVersion(id: string, version: string, userId?: string): Promise<void> {
     const where: Prisma.MiniprogramWhereInput = { id };
     if (userId) {
       where.userId = userId;
@@ -501,7 +501,7 @@ export class MiniprogramsService {
   /**
    * 自动递增版本号
    */
-  async autoIncrementVersion(id: number, userId?: number): Promise<string> {
+  async autoIncrementVersion(id: string, userId?: string): Promise<string> {
     const miniprogram: MiniprogramWithConfig = await this.findOne(id, userId);
     
     if (miniprogram.config?.versionType === 'MANUAL') {
@@ -524,7 +524,7 @@ export class MiniprogramsService {
   /**
    * 上传私钥文件
    */
-  async uploadPrivateKey(id: number, file: Express.Multer.File, userId?: number): Promise<{ message: string; privateKeyPath: string }> {
+  async uploadPrivateKey(id: string, file: Express.Multer.File, userId?: string): Promise<{ message: string; privateKeyPath: string }> {
     // 验证小程序是否存在
     const miniprogram = await this.findOne(id, userId);
     

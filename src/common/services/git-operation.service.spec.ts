@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GitOperationService } from './git-operation.service';
-import { GitCredentialsService } from '../../modules/git-credentials/git-credentials.service';
-import { EncryptionService } from './encryption.service';
-import { 
-  GetRepositoryBranchesDto, 
-  GitOperationException, 
-  GitOperationErrorType 
-} from '../dto/git-operation.dto';
 import { GitAuthType } from '@prisma/client';
+import { GitCredentialsService } from '../../modules/git-credentials/git-credentials.service';
+import {
+  GetRepositoryBranchesDto,
+  GitOperationErrorType,
+  GitOperationException
+} from '../dto/git-operation.dto';
+import { EncryptionService } from './encryption.service';
+import { GitOperationService } from './git-operation.service';
 
 describe('GitOperationService', () => {
   let service: GitOperationService;
@@ -48,14 +48,14 @@ describe('GitOperationService', () => {
   });
 
   describe('getRepositoryBranches', () => {
-    const userId = 1;
+    const userId = '1';
     const dto: GetRepositoryBranchesDto = {
       repositoryUrl: 'https://github.com/test/repo.git',
-      credentialId: 1,
+      credentialId: '1',
     };
 
     const mockCredential = {
-      id: 1,
+      id: '1',
       authType: GitAuthType.HTTPS,
       username: 'testuser',
       decryptedPassword: 'testpassword',

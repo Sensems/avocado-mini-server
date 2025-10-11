@@ -1,8 +1,7 @@
-import { IsOptional, IsEnum, ValidateNested, IsNumber, IsArray } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { MiniprogramStatus } from '@prisma/client';
-import { CreateMiniprogramDto } from './create-miniprogram.dto';
+import { Type } from 'class-transformer';
+import { IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { UpdateMiniprogramConfigDto } from './update-miniprogram-config.dto';
 
 export class UpdateMiniprogramDto {
@@ -33,14 +32,14 @@ export class UpdateMiniprogramDto {
 
   @ApiPropertyOptional({ description: 'Git认证凭据ID' })
   @IsOptional()
-  @IsNumber()
-  gitCredentialId?: number;
+  @IsString()
+  gitCredentialId?: string;
 
   @ApiPropertyOptional({ description: '通知配置ID列表' })
   @IsOptional()
   @IsArray()
-  @IsNumber({}, { each: true })
-  notificationConfigIds?: number[];
+  @IsString({ each: true })
+  notificationConfigIds?: string[];
 
   @ApiPropertyOptional({ description: '小程序配置信息' })
   @IsOptional()

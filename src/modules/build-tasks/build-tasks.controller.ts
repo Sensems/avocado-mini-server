@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   UseGuards,
@@ -70,7 +69,7 @@ export class BuildTasksController {
   @ApiQuery({ name: 'appId', required: false, description: '小程序ID' })
   getStatistics(
     @CurrentUser() user: User,
-    @Query('appId', new ParseIntPipe({ optional: true })) appId?: number,
+    @Query('appId') appId?: string,
   ) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.buildTasksService.getStatistics(userId, appId);

@@ -10,7 +10,7 @@ import { PaginationDto, PaginationResult } from '../../common/dto/pagination.dto
 
 export interface BuildJobData {
   taskId: string;
-  appId: number;
+  appId: string;
   type: BuildType;
   branch: string;
   version: string;
@@ -31,7 +31,7 @@ export class BuildTasksService {
   /**
    * 创建构建任务
    */
-  async create(userId: number, createBuildTaskDto: CreateBuildTaskDto): Promise<BuildTask> {
+  async create(userId: string, createBuildTaskDto: CreateBuildTaskDto): Promise<BuildTask> {
     const { appId, ...taskData } = createBuildTaskDto;
 
     // 检查小程序是否存在
@@ -130,8 +130,8 @@ export class BuildTasksService {
    * 分页查询构建任务列表
    */
   async findAll(
-    userId?: number,
-    appId?: number,
+    userId?: string,
+    appId?: string,
     paginationDto?: PaginationDto,
   ): Promise<PaginationResult<BuildTask>> {
     const { page = 1, limit = 10, search, sortBy, sortOrder = 'desc' } = paginationDto || {};
@@ -208,7 +208,7 @@ export class BuildTasksService {
   /**
    * 根据ID查询构建任务
    */
-  async findOne(id: string, userId?: number): Promise<BuildTask> {
+  async findOne(id: string, userId?: string): Promise<BuildTask> {
     const where: Prisma.BuildTaskWhereInput = { id };
     
     // 如果指定了用户ID，只能查询自己的构建任务
@@ -323,7 +323,7 @@ export class BuildTasksService {
   /**
    * 取消构建任务
    */
-  async cancel(id: string, userId?: number): Promise<BuildTask> {
+  async cancel(id: string, userId?: string): Promise<BuildTask> {
     const task = await this.findOne(id, userId);
 
     if (task.status !== TaskStatus.PENDING && task.status !== TaskStatus.RUNNING) {
@@ -343,7 +343,7 @@ export class BuildTasksService {
   /**
    * 重试构建任务
    */
-  async retry(id: string, userId?: number): Promise<BuildTask> {
+  async retry(id: string, userId?: string): Promise<BuildTask> {
     const task = await this.findOne(id, userId);
 
     if (task.status !== TaskStatus.FAILED) {
@@ -411,7 +411,7 @@ export class BuildTasksService {
   /**
    * 获取构建任务统计信息
    */
-  async getStatistics(userId?: number, appId?: number): Promise<Record<string, any>> {
+  async getStatistics(userId?: string, appId?: string): Promise<Record<string, any>> {
     const where: Prisma.BuildTaskWhereInput = {};
     
     if (userId) {

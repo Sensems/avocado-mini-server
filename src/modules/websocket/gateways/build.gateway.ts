@@ -14,7 +14,7 @@ import { Server, Socket } from 'socket.io';
 import { UsersService } from '../../users/users.service';
 
 interface AuthenticatedSocket extends Socket {
-  userId?: number;
+  userId?: string;
   username?: string;
 }
 
@@ -199,7 +199,7 @@ export class BuildGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * 获取在线用户列表
    */
-  getOnlineUsers(): Array<{ userId: number; username: string; socketId: string }> {
+  getOnlineUsers(): Array<{ userId: string; username: string; socketId: string }> {
     return Array.from(this.connectedClients.values()).map(client => ({
       userId: client.userId,
       username: client.username,

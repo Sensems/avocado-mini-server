@@ -1,6 +1,6 @@
-import { IsOptional, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, Min } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class BuildTaskQueryDto extends PaginationDto {
@@ -9,5 +9,5 @@ export class BuildTaskQueryDto extends PaginationDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  appId?: number;
+  appId?: string;
 }

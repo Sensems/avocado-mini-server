@@ -1,30 +1,29 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
-  ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { User, UserStatus } from '@prisma/client';
 import { RequirePermissions } from '../../common/decorators/auth.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
-import { User, UserStatus } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UsersService } from './users.service';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -67,7 +66,7 @@ export class UsersController {
   @ApiOperation({ summary: '根据ID获取用户信息' })
   @ApiResponse({ status: 200, description: '获取用户信息成功' })
   @ApiResponse({ status: 404, description: '用户不存在' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
@@ -86,7 +85,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: '用户信息更新成功' })
   @ApiResponse({ status: 404, description: '用户不存在' })
   @ApiResponse({ status: 409, description: '用户名或邮箱已存在' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
 
@@ -96,7 +95,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: '用户删除成功' })
   @ApiResponse({ status: 404, description: '用户不存在' })
   @ApiResponse({ status: 400, description: '用户存在关联数据，无法删除' })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
 
@@ -117,7 +116,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: '密码重置成功' })
   @ApiResponse({ status: 404, description: '用户不存在' })
   resetPassword(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() body: { newPassword: string },
   ) {
     return this.usersService.resetPassword(id, body.newPassword);
@@ -127,7 +126,7 @@ export class UsersController {
   @RequirePermissions('users:update')
   @ApiOperation({ summary: '批量更新用户状态' })
   @ApiResponse({ status: 200, description: '用户状态更新成功' })
-  batchUpdateStatus(@Body() body: { ids: number[]; status: UserStatus }) {
+  batchUpdateStatus(@Body() body: { ids: string[]; status: UserStatus }) {
     return this.usersService.batchUpdateStatus(body.ids, body.status);
   }
 }

@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -79,7 +78,7 @@ export class MiniprogramsController {
   @ApiOperation({ summary: '根据ID获取小程序信息' })
   @ApiResponse({ status: 200, description: '获取小程序信息成功' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
-  findOne(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  findOne(@CurrentUser() user: User, @Param('id') id: string) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.findOne(id, userId);
   }
@@ -89,7 +88,7 @@ export class MiniprogramsController {
   @ApiOperation({ summary: '获取小程序构建统计信息' })
   @ApiResponse({ status: 200, description: '获取构建统计信息成功' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
-  getBuildStatistics(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  getBuildStatistics(@CurrentUser() user: User, @Param('id') id: string) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.getBuildStatistics(id, userId);
   }
@@ -102,7 +101,7 @@ export class MiniprogramsController {
   @ApiResponse({ status: 409, description: 'AppID已存在' })
   update(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateMiniprogramDto: UpdateMiniprogramDto,
   ) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
@@ -115,7 +114,7 @@ export class MiniprogramsController {
   @ApiResponse({ status: 200, description: '小程序删除成功' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
   @ApiResponse({ status: 400, description: '存在正在进行的构建任务，无法删除' })
-  remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  remove(@CurrentUser() user: User, @Param('id') id: string) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.remove(id, userId);
   }
@@ -126,7 +125,7 @@ export class MiniprogramsController {
   @ApiResponse({ status: 200, description: '小程序状态更新成功' })
   batchUpdateStatus(
     @CurrentUser() user: User,
-    @Body() body: { ids: number[]; status: MiniprogramStatus },
+    @Body() body: { ids: string[]; status: MiniprogramStatus },
   ) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.batchUpdateStatus(body.ids, body.status, userId);
@@ -137,7 +136,7 @@ export class MiniprogramsController {
   @ApiOperation({ summary: '自动递增版本号' })
   @ApiResponse({ status: 200, description: '版本号更新成功' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
-  autoIncrementVersion(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  autoIncrementVersion(@CurrentUser() user: User, @Param('id') id: string) {
     const userId = user.role === UserRole.ADMIN ? undefined : user.id;
     return this.miniprogramsService.autoIncrementVersion(id, userId);
   }
@@ -187,7 +186,7 @@ export class MiniprogramsController {
   @ApiResponse({ status: 404, description: '小程序不存在' })
   async uploadPrivateKey(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.miniprogramsService.uploadPrivateKey(id, file, user.role === UserRole.ADMIN ? undefined : user.id);
@@ -200,7 +199,7 @@ export class MiniprogramsController {
   @ApiResponse({ status: 404, description: '小程序不存在' })
   getWebhooks(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Query() paginationDto: PaginationDto,
   ) {
     // 这里需要注入 WebhooksService 或者通过 MiniprogramsService 代理
@@ -213,7 +212,7 @@ export class MiniprogramsController {
   @ApiOperation({ summary: '为小程序生成 Webhook 配置' })
   @ApiResponse({ status: 200, description: '生成 Webhook 配置成功' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
-  async generateWebhookConfig(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  async generateWebhookConfig(@CurrentUser() user: User, @Param('id') id: string) {
     const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const secret = require('crypto').randomBytes(32).toString('hex');
     
@@ -244,7 +243,7 @@ export class MiniprogramsController {
   @ApiOperation({ summary: '获取小程序的 Webhook URL' })
   @ApiResponse({ status: 200, description: '获取 Webhook URL 成功' })
   @ApiResponse({ status: 404, description: '小程序不存在' })
-  getWebhookUrl(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  getWebhookUrl(@CurrentUser() user: User, @Param('id') id: string) {
     const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     return {
       webhookUrls: {

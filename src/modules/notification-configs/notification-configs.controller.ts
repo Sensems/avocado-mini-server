@@ -1,31 +1,30 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
-  ParseIntPipe,
-  UseGuards,
+  UseGuards
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import { User, NotificationConfigStatus } from '@prisma/client';
-import { NotificationConfigsService } from './notification-configs.service';
-import { CreateNotificationConfigDto } from './dto/create-notification-config.dto';
-import { UpdateNotificationConfigDto } from './dto/update-notification-config.dto';
+import { NotificationConfigStatus, User } from '@prisma/client';
+import { RequirePermissions } from '../../common/decorators/auth.decorator';
+import { CurrentUser } from '../../common/decorators/user.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../../common/decorators/auth.decorator';
-import { CurrentUser } from '../../common/decorators/user.decorator';
+import { CreateNotificationConfigDto } from './dto/create-notification-config.dto';
+import { UpdateNotificationConfigDto } from './dto/update-notification-config.dto';
+import { NotificationConfigsService } from './notification-configs.service';
 
 @ApiTags('notification-configs')
 @ApiBearerAuth()
@@ -69,7 +68,7 @@ export class NotificationConfigsController {
   @ApiOperation({ summary: '根据ID获取通知配置信息' })
   @ApiResponse({ status: 200, description: '获取通知配置信息成功' })
   @ApiResponse({ status: 404, description: '通知配置不存在' })
-  findOne(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  findOne(@CurrentUser() user: User, @Param('id') id: string) {
     return this.notificationConfigsService.findOne(id, user.id);
   }
 
@@ -81,7 +80,7 @@ export class NotificationConfigsController {
   @ApiResponse({ status: 409, description: '配置名称已存在' })
   update(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateNotificationConfigDto: UpdateNotificationConfigDto,
   ) {
     return this.notificationConfigsService.update(id, user.id, updateNotificationConfigDto);
@@ -93,7 +92,7 @@ export class NotificationConfigsController {
   @ApiResponse({ status: 200, description: '通知配置删除成功' })
   @ApiResponse({ status: 404, description: '通知配置不存在' })
   @ApiResponse({ status: 400, description: '配置正在被使用，无法删除' })
-  remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  remove(@CurrentUser() user: User, @Param('id') id: string) {
     return this.notificationConfigsService.remove(id, user.id);
   }
 
@@ -103,7 +102,7 @@ export class NotificationConfigsController {
   @ApiResponse({ status: 200, description: '通知配置状态更新成功' })
   batchUpdateStatus(
     @CurrentUser() user: User,
-    @Body() body: { ids: number[]; status: NotificationConfigStatus },
+    @Body() body: { ids: string[]; status: NotificationConfigStatus },
   ) {
     return this.notificationConfigsService.batchUpdateStatus(body.ids, body.status, user.id);
   }
@@ -113,7 +112,7 @@ export class NotificationConfigsController {
   @ApiOperation({ summary: '测试通知配置' })
   @ApiResponse({ status: 200, description: '通知配置测试成功' })
   @ApiResponse({ status: 404, description: '通知配置不存在' })
-  testConfig(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  testConfig(@CurrentUser() user: User, @Param('id') id: string) {
     return this.notificationConfigsService.testNotificationConfig(id, user.id);
   }
 }

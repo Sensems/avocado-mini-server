@@ -127,7 +127,7 @@ export class UsersService {
   /**
    * 根据ID查询用户
    */
-  async findOne(id: number): Promise<UserWithoutPassword> {
+  async findOne(id: string): Promise<UserWithoutPassword> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -188,7 +188,7 @@ export class UsersService {
   /**
    * 更新用户信息
    */
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<UserWithoutPassword> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserWithoutPassword> {
     const { password, ...userData } = updateUserDto;
 
     // 检查用户是否存在
@@ -250,7 +250,7 @@ export class UsersService {
   /**
    * 删除用户
    */
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     // 检查用户是否存在
     await this.findOne(id);
 
@@ -279,7 +279,7 @@ export class UsersService {
   /**
    * 更新最后登录时间
    */
-  async updateLastLoginAt(id: number): Promise<void> {
+  async updateLastLoginAt(id: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { lastLoginAt: new Date() },
@@ -296,7 +296,7 @@ export class UsersService {
   /**
    * 修改密码
    */
-  async changePassword(id: number, oldPassword: string, newPassword: string): Promise<void> {
+  async changePassword(id: string, oldPassword: string, newPassword: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -321,7 +321,7 @@ export class UsersService {
   /**
    * 重置密码
    */
-  async resetPassword(id: number, newPassword: string): Promise<void> {
+  async resetPassword(id: string, newPassword: string): Promise<void> {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await this.prisma.user.update({
@@ -333,7 +333,7 @@ export class UsersService {
   /**
    * 批量更新用户状态
    */
-  async batchUpdateStatus(ids: number[], status: UserStatus): Promise<void> {
+  async batchUpdateStatus(ids: string[], status: UserStatus): Promise<void> {
     await this.prisma.user.updateMany({
       where: { id: { in: ids } },
       data: { status },

@@ -16,11 +16,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { WebhookPayloadDto } from './dto/webhook-payload.dto';
-import { GenerateWebhookDto } from './dto/generate-webhook.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
+import { GenerateWebhookDto } from './dto/generate-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { WebhooksService } from './webhooks.service';
 
@@ -57,7 +56,7 @@ export class WebhooksController {
   async findAll(
     @Request() req: any,
     @Query() paginationDto: PaginationDto,
-    @Query('appId') appId?: number,
+    @Query('appId') appId?: string,
   ) {
     return this.webhooksService.findAll(req.user.id, paginationDto, appId);
   }
@@ -68,7 +67,7 @@ export class WebhooksController {
   @ApiOperation({ summary: '获取 Webhook 详情' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findOne(@Request() req: any, @Param('id') id: string) {
-    return this.webhooksService.findOne(+id, req.user.id);
+    return this.webhooksService.findOne(id, req.user.id);
   }
 
   @Patch(':id')
@@ -81,7 +80,7 @@ export class WebhooksController {
     @Param('id') id: string,
     @Body() updateWebhookDto: UpdateWebhookDto,
   ) {
-    return this.webhooksService.update(+id, updateWebhookDto, req.user.id);
+    return this.webhooksService.update(id, updateWebhookDto, req.user.id);
   }
 
   @Delete(':id')
@@ -90,7 +89,7 @@ export class WebhooksController {
   @ApiOperation({ summary: '删除 Webhook' })
   @ApiResponse({ status: 200, description: '删除成功' })
   async remove(@Request() req: any, @Param('id') id: string) {
-    return this.webhooksService.remove(+id, req.user.id);
+    return this.webhooksService.remove(id, req.user.id);
   }
 
   @Post(':id/test')
@@ -150,7 +149,7 @@ export class WebhooksController {
     },
   })
   async test(@Request() req: any, @Param('id') id: string) {
-    return this.webhooksService.testWebhook(+id, req.user.id);
+    return this.webhooksService.testWebhook(id, req.user.id);
   }
 
   // 接收 Git 仓库事件的公开端点
@@ -176,7 +175,7 @@ export class WebhooksController {
 
       // 处理事件
       const result = await this.webhooksService.handleGitEvent(
-        +appId,
+        appId,
         eventType,
         payload,
         headers,
